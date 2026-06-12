@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GCS Kapal USV - Tugas Akhir</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -26,9 +27,6 @@
         .video-container {
             width: 100%; height: 240px; background-color: #000; border-radius: 12px;
             margin-bottom: 15px; overflow: hidden; position: relative; border: 2px solid #3f3f5a;
-        }
-        video {
-            width: 100%; height: 100%; object-fit: cover;
         }
         .video-overlay {
             position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.6);
@@ -125,69 +123,67 @@
 </div>
 
 <script>
-    // --- KONFIGURASI ADRES JALUR ---
-    const RASPBERRY_PI_IP = "192.168.1.16"; // Alamat IP asli ter-update milik Raspberry Pi Anda!
+    // --- KONFIGURASI ALAMAT JALUR ---
     const BROKER_HOST = "broker.emqx.io";
-    const BROKER_PORT = 8083;
+    const BROKER_PORT = 8084; // 2. DIUBAH: Menggunakan port 8084 untuk Secure WebSockets (WSS)
     const TOPIC = "undip/aterkia/zidan/control";
-
-    // --- PAHO MQTT INTERNAL LIGHTWEIGHT ENGINE ---
-    window.Paho = {
-        MQTT: {
-            Client: function(host, port, clientId) {
-                this.host = host; this.port = Number(port);
-                this.clientId = clientId || "web_" + Math.random().toString(16).substr(2,8);
-                this.connected = false; this.onConnectionLost = null; this.socket = null;
-                this.connect = function(options) {
-                    var self = this;
-                    try {
-                        self.socket = new WebSocket("ws://" + self.host + ":" + self.port + "/mqtt", "mqtt");
-                        self.socket.binaryType = "arraybuffer";
-                        self.socket.onopen = function() {
-                            var pkt = new Uint8Array([16,12,0,4,77,81,84,84,4,2,0,60,0,0]);
-                            self.socket.send(pkt);
-                        };
-                        self.socket.onmessage = function(e) {
-                            var dv = new DataView(e.data);
-                            if (dv.getUint8(0) === 32) {
-                                self.connected = true;
-                                if (options && options.onSuccess) options.onSuccess();
-                            }
-                        };
-                        self.socket.onclose = function() { self.connected = false; if (self.onConnectionLost) self.onConnectionLost({errorMessage: "Lost connection"}); };
-                        self.socket.onerror = function() { self.connected = false; if (options && options.onFailure) options.onFailure({errorMessage: "Connection error"}); };
-                    } catch(err) { self.connected = false; if (options && options.onFailure) options.onFailure({errorMessage: err.message}); }
-                };
-                this.send = function(msgObj) {
-                    if (this.connected && this.socket) {
-                        var topic = msgObj.destinationName; var payload = msgObj.payloadString;
-                        var tLen = topic.length; var pLen = payload.length; var remLen = 2 + tLen + pLen;
-                        var pkt = new Uint8Array(2 + remLen); var idx = 0;
-                        pkt[idx++] = 48; pkt[idx++] = remLen;
-                        pkt[idx++] = (tLen >> 8) & 255; pkt[idx++] = tLen & 255;
-                        for (var i = 0; i < tLen; i++) pkt[idx++] = topic.charCodeAt(i);
-                        for (var i = 0; i < pLen; i++) pkt[idx++] = payload.charCodeAt(i);
-                        this.socket.send(pkt);
-                    }
-                };
-                this.isConnected = function() { return this.connected; };
-            },
-            Message: function(payloadStr) { this.payloadString = payloadStr; this.destinationName = ""; }
-        }
-    };
 
     let lastArah = "straight"; let lastSpeed = 50; let sendInterval = null;
     const statusLabel = document.getElementById("statusLabel");
-    const client = new Paho.MQTT.Client(BROKER_HOST, Number(BROKER_PORT), "client_" + Math.random().toString(16).substr(2, 8));
 
-    client.onConnectionLost = () => { statusLabel.innerText = "KONEKSI TERPUTUS"; statusLabel.className = "status"; statusLabel.style.backgroundColor = "#f72585"; };
-    client.connect({
-        onSuccess: () => { statusLabel.innerText = "ONLINE (CONTROL & VIDEO READY)"; statusLabel.className = "status connected"; },
-        onFailure: () => { statusLabel.innerText = "KONEKSI GAGAL"; statusLabel.className = "status"; statusLabel.style.backgroundColor = "#f72585"; }
-    });
+    // 3. INISIALISASI ULANG KLIEN MENGGUNAKAN LIBRARY PAHO RESMI VIA CDN
+    const clientId = "web_gcs_" + Math.random().toString(16).substr(2, 8);
+    const client = new Paho.MQTT.Client(BROKER_HOST, Number(BROKER_PORT), clientId);
 
-    function kirimDataMQTT(payload) { if (client.isConnected()) { const message = new Paho.MQTT.Message(payload); message.destinationName = TOPIC; client.send(message); } }
-    function picuLoopPengiriman() { if (!sendInterval) { sendInterval = setInterval(() => { kirimDataMQTT(`${lastArah},${lastSpeed}`); }, 120); } }
+    client.onConnectionLost = (responseObject) => { 
+        statusLabel.innerText = "KONEKSI TERPUTUS"; 
+        statusLabel.className = "status"; 
+        statusLabel.style.backgroundColor = "#f72585";
+        console.log("Koneksi terputus: " + responseObject.errorMessage);
+        setTimeout(eksekusiKoneksiMQTT, 3000); // Otomatis coba hubungkan kembali jika putus di danau/lapangan
+    };
+
+    function eksekusiKoneksiMQTT() {
+        statusLabel.innerText = "MENGHUBUNGKAN MQTT...";
+        statusLabel.className = "status";
+        statusLabel.style.backgroundColor = "#f72585";
+        
+        client.connect({
+            useSSL: true, // 4. WAJIB TRUE: Memaksa koneksi menggunakan wss:// agar lolos enkripsi HTTPS Vercel
+            timeout: 5,
+            onSuccess: () => { 
+                statusLabel.innerText = "ONLINE (CONTROL & VIDEO READY)"; 
+                statusLabel.className = "status connected"; 
+                console.log("Sukses Terhubung ke EMQX via SSL/WSS!");
+            },
+            onFailure: (error) => { 
+                statusLabel.innerText = "KONEKSI GAGAL"; 
+                statusLabel.className = "status"; 
+                statusLabel.style.backgroundColor = "#f72585";
+                console.error("Gagal terhubung: ", error);
+                setTimeout(eksekusiKoneksiMQTT, 5000); // Mencoba ulang jabat tangan jika jaringan drop
+            }
+        });
+    }
+
+    // Jalankan jabat tangan MQTT saat GCS dibuka
+    eksekusiKoneksiMQTT();
+
+    function kirimDataMQTT(payload) { 
+        if (client && client.isConnected()) { 
+            const message = new Paho.MQTT.Message(payload); 
+            message.destinationName = TOPIC; 
+            client.send(message); 
+        } 
+    }
+    
+    function picuLoopPengiriman() { 
+        if (!sendInterval) { 
+            sendInterval = setInterval(() => { 
+                kirimDataMQTT(`${lastArah},${lastSpeed}`); 
+            }, 120); 
+        } 
+    }
 
     // --- KONTROL INDIKATOR WARNA SLIDER DUA ARAH ---
     function updateSliderThrottle(val) {
@@ -216,84 +212,81 @@
         picuLoopPengiriman();
     }
 
-  // --- ENGINE JOYSTICK EMBEDDED WITH RIGHT-CLICK FAILSAFE ---
-var nipplejs = {
-    create: function (options) {
-        var zone = options.zone; 
-        var box = document.createElement("div");
-        box.style.position = "absolute"; box.style.width = "110px"; box.style.height = "110px"; box.style.left = "50%"; box.style.top = "50%"; box.style.transform = "translate(-50%, -50%)";
-        box.style.borderRadius = "50%"; box.style.background = "rgba(67, 97, 238, 0.2)"; box.style.border = "2px solid #4361ee";
-        
-        var nipple = document.createElement("div");
-        nipple.style.width = "45px"; nipple.style.height = "45px"; nipple.style.position = "absolute"; nipple.style.left = "32.5px"; nipple.style.top = "32.5px"; nipple.style.borderRadius = "50%";
-        nipple.style.background = "#4361ee"; nipple.style.boxShadow = "0 4px 10px rgba(0,0,0,0.5)"; nipple.style.cursor = "pointer";
-        
-        box.appendChild(nipple); 
-        zone.appendChild(box); 
-        
-        var isRightDragging = false;
-        var callbacks = {};
-
-        var moveHandler = function (e) {
-            if (!isRightDragging) return; // FAILSAFE: Jika tidak ditekan/klik kanan lepas, abaikan gerakan!
-            e.preventDefault();
-            var touch = e.touches ? e.touches[0] : e;
-            var rect = box.getBoundingClientRect();
-            var deltaX = touch.pageX - (rect.left + 55);
-            var deltaY = touch.pageY - (rect.top + 55);
-            var distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    // --- ENGINE JOYSTICK EMBEDDED WITH RIGHT-CLICK FAILSAFE ---
+    var nipplejs = {
+        create: function (options) {
+            var zone = options.zone; 
+            var box = document.createElement("div");
+            box.style.position = "absolute"; box.style.width = "110px"; box.style.height = "110px"; box.style.left = "50%"; box.style.top = "50%"; box.style.transform = "translate(-50%, -50%)";
+            box.style.borderRadius = "50%"; box.style.background = "rgba(67, 97, 238, 0.2)"; box.style.border = "2px solid #4361ee";
             
-            if (distance > 55) { deltaX = (deltaX / distance) * 55; deltaY = (deltaY / distance) * 55; }
-            nipple.style.transform = "translate(" + deltaX + "px, " + deltaY + "px)";
+            var nipple = document.createElement("div");
+            nipple.style.width = "45px"; nipple.style.height = "45px"; nipple.style.position = "absolute"; nipple.style.left = "32.5px"; nipple.style.top = "32.5px"; nipple.style.borderRadius = "50%";
+            nipple.style.background = "#4361ee"; nipple.style.boxShadow = "0 4px 10px rgba(0,0,0,0.5)"; nipple.style.cursor = "pointer";
             
-            var directionX = "straight";
-            if (deltaX < -15) directionX = "left";
-            else if (deltaX > 15) directionX = "right";
+            box.appendChild(nipple); 
+            zone.appendChild(box); 
             
-            if (callbacks["move"]) callbacks["move"](null, { direction: { x: directionX }, distance: distance });
-        };
+            var isRightDragging = false;
+            var callbacks = {};
 
-        var endHandler = function () {
-            if (!isRightDragging) return;
-            isRightDragging = false;
-            // FAILSAFE AUTO-CENTERING: Balikkan bola ke tengah seketika klik kanan lepas
-            nipple.style.transform = "translate(0px, 0px)";
-            if (callbacks["end"]) callbacks["end"]();
-        };
+            var moveHandler = function (e) {
+                if (!isRightDragging) return; 
+                e.preventDefault();
+                var touch = e.touches ? e.touches[0] : e;
+                var rect = box.getBoundingClientRect();
+                var deltaX = touch.pageX - (rect.left + 55);
+                var deltaY = touch.pageY - (rect.top + 55);
+                var distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                
+                if (distance > 55) { deltaX = (deltaX / distance) * 55; deltaY = (deltaY / distance) * 55; }
+                nipple.style.transform = "translate(" + deltaX + "px, " + deltaY + "px)";
+                
+                var directionX = "straight";
+                if (deltaX < -15) directionX = "left";
+                else if (deltaX > 15) directionX = "right";
+                
+                if (callbacks["move"]) callbacks["move"](null, { direction: { x: directionX }, distance: distance });
+            };
 
-        // Memicu kendali hanya lewat Klik Kanan (Button 2)
-        zone.addEventListener("mousedown", function (e) {
-            if (e.button === 2) { // 2 artinya Klik Kanan murni
-                isRightDragging = true;
-                document.addEventListener("mousemove", moveHandler);
-                document.addEventListener("mouseup", endHandler);
-            }
-        });
+            var endHandler = function () {
+                if (!isRightDragging) return;
+                isRightDragging = false;
+                nipple.style.transform = "translate(0px, 0px)";
+                if (callbacks["end"]) callbacks["end"]();
+            };
 
-        // Pengaman ekstra jika kursor terseret keluar area jendela browser laptop saat trial
-        window.addEventListener("mouseleave", endHandler);
-        window.addEventListener("mouseup", endHandler);
+            zone.addEventListener("mousedown", function (e) {
+                if (e.button === 2) { 
+                    isRightDragging = true;
+                    document.addEventListener("mousemove", moveHandler);
+                    document.addEventListener("mouseup", endHandler);
+                }
+            });
 
-        return { on: function (evt, cb) { callbacks[evt] = cb; } };
-    }
-};
+            window.addEventListener("mouseleave", endHandler);
+            window.addEventListener("mouseup", endHandler);
 
-// Matikan menu drop-down klik kanan bawaan browser Chrome agar tidak mengganggu pandangan layar GCS
-document.getElementById('joystick-zone').addEventListener('contextmenu', e => e.preventDefault());
+            return { on: function (evt, cb) { callbacks[evt] = cb; } };
+        }
+    };
 
-const joyManager = nipplejs.create({ zone: document.getElementById('joystick-zone') });
-joyManager.on('move', (evt, data) => { 
-    if (!data.direction) return; 
-    let arah = data.direction.x || "straight"; 
-    document.getElementById("txtArah").innerText = arah; 
-    lastArah = arah; 
-    picuLoopPengiriman(); 
-});
-joyManager.on('end', () => { 
-    lastArah = "straight"; 
-    document.getElementById("txtArah").innerText = "straight"; 
-    picuLoopPengiriman(); 
-});
+    document.getElementById('joystick-zone').addEventListener('contextmenu', e => e.preventDefault());
+
+    const joyManager = nipplejs.create({ zone: document.getElementById('joystick-zone') });
+    joyManager.on('move', (evt, data) => { 
+        if (!data.direction) return; 
+        let arah = data.direction.x || "straight"; 
+        document.getElementById("txtArah").innerText = arah; 
+        lastArah = arah; 
+        picuLoopPengiriman(); 
+    });
+    joyManager.on('end', () => { 
+        lastArah = "straight"; 
+        document.getElementById("txtArah").innerText = "straight"; 
+        picuLoopPengiriman(); 
+    });
+
     function emergencyStop() {
         clearInterval(sendInterval); sendInterval = null; lastArah = "straight"; lastSpeed = 50;
         document.getElementById("throttleSlider").value = 50;
@@ -302,60 +295,8 @@ joyManager.on('end', () => {
         kirimDataMQTT("straight,50");
     }
 
-    // --- CLIENT WEBRTC HANDSHAKE ENGINE (WHEP) TO MEDIAMTX (FIXED FOR BAD REQUEST 400) ---
-    async function startWebRTCVideo() {
-        const videoElement = document.getElementById('videoUSV');
-        
-        const pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-            bundlePolicy: "max-bundle"
-        });
-
-        // Paksa jabat tangan hanya memproses elemen VIDEO saja
-        pc.addTransceiver('video', { direction: 'recvonly' });
-
-        pc.ontrack = (event) => {
-            if (videoElement.srcObject !== event.streams[0]) {
-                videoElement.srcObject = event.streams[0];
-                console.log('Video stream USV WebRTC berhasil dipasang.');
-            }
-        };
-
-        try {
-            const offer = await pc.createOffer();
-            let sdp = offer.sdp;
-            
-            await pc.setLocalDescription({ type: 'offer', sdp: sdp });
-
-            // Handshake SDP ke biner MediaMTX Raspberry Pi via port HTTP WebRTC 8889
-            // Header menggunakan 'text/plain' untuk mencegah penolakan format penawaran media
-            const response = await fetch(`http://${RASPBERRY_PI_IP}:8889/cam/whep`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain' },
-                body: sdp
-            });
-
-            if (!response.ok) {
-                throw new Error('Server merespons status: ' + response.status);
-            }
-
-            const answerSdp = await response.text();
-            await pc.setRemoteDescription(new RTCSessionDescription({
-                type: 'answer',
-                sdp: answerSdp
-            }));
-            
-            console.log("Jabat tangan WebRTC Sukses Terbuka!");
-            
-        } catch (error) {
-            console.error('Koneksi WebRTC Gagal:', error);
-            setTimeout(startWebRTCVideo, 7000); // Rekoneksi otomatis setiap 7 detik jika terjadi gangguan Wi-Fi
-        }
-    }
-
     window.onload = function() {
         updateSliderThrottle(50);
-        // startWebRTCVideo(); // Dimatikan untuk mencegah error 400 Bad Request, video dihandle langsung secara native oleh iframe MediaMTX
     };
 </script>
 </body>
