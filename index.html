@@ -94,8 +94,8 @@
     <div id="statusLabel" class="status">MENGHUBUNGKAN MQTT...</div>
     
     <div class="video-container">
-        <video id="videoUSV" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover; background: #000;"></video>
-        <div class="video-overlay">🔴 LIVE WEBRTC CAM (NATIVE)</div>
+        <iframe src="https://postbox-papyrus-left.ngrok-free.dev/cam/" style="width: 100%; height: 100%; border: none; background: #000;" allow="autoplay; fullscreen"></iframe>
+        <div class="video-overlay">🔴 LIVE WEBRTC CAM</div>
     </div>
 
     <div class="data-display">
@@ -127,73 +127,7 @@
     const BROKER_HOST = "broker.emqx.io";
     const BROKER_PORT = 8084; 
     const TOPIC = "undip/aterkia/zidan/control";
-    
-    // URL Endpoint WHEP Ngrok Anda
-    const WHEP_URL = "https://postbox-papyrus-left.ngrok-free.dev/cam/whep";
 
-    // --- CLIENT WEBRTC HANDSHAKE ENGINE (WHEP) WITH NGROK BYPASS ---
-    async function startWebRTCVideo() {
-        const videoElement = document.getElementById('videoUSV');
-        
-        // Buat objek RTCPeerConnection standar browser
-        const pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-            bundlePolicy: "max-bundle"
-        });
-
-        // Paksa peer connection hanya meminta data VIDEO saja (recvonly)
-        pc.addTransceiver('video', { direction: 'recvonly' });
-
-        // Ketika data stream video dari Raspi diterima, pasang ke tag <video>
-        pc.ontrack = (event) => {
-            if (videoElement.srcObject !== event.streams[0]) {
-                videoElement.srcObject = event.streams[0];
-                console.log('✓ Video stream USV WebRTC berhasil dipasang secara native.');
-            }
-        };
-
-        try {
-            // Buat penawaran koneksi (SDP Offer)
-            const offer = await pc.createOffer();
-            let sdp = offer.sdp;
-            
-            await pc.setLocalDescription({ type: 'offer', sdp: sdp });
-
-            console.log("Mengirim jabat tangan WHEP ke Ngrok dengan bypass header...");
-
-            // JABAT TANGAN VIA FETCH DENGAN HEADERS BYPASS
-            const response = await fetch(WHEP_URL, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'text/plain',
-                    'ngrok-skip-browser-warning': 'true' 
-                },
-                body: sdp
-            });
-
-            if (!response.ok) {
-                throw new Error('Server merespons status: ' + response.status);
-            }
-
-            // Ambil jawaban SDP dari MediaMTX Raspi
-            const answerSdp = await response.text();
-            
-            // Selesaikan koneksi WebRTC
-            await pc.setRemoteDescription(new RTCSessionDescription({
-                type: 'answer',
-                sdp: answerSdp
-            }));
-            
-            console.log("✓ Jalur WebRTC sukses terbuka tanpa interupsi!");
-            
-        } catch (error) {
-            console.error('Koneksi WebRTC Gagal:', error);
-            // Rekoneksi otomatis setiap 5 detik jika internet kapal drop di lapangan
-            setTimeout(startWebRTCVideo, 5000); 
-        }
-    }
-
-    // --- LAUNCH ENGINE CONTROLLER ---
     let lastArah = "straight"; let lastSpeed = 50; let sendInterval = null;
     const statusLabel = document.getElementById("statusLabel");
 
@@ -228,9 +162,8 @@
         });
     }
 
-    // Eksekusi koneksi MQTT dan jalankan video WHEP secara simultan
+    // Jalankan koneksi MQTT saat halaman siap
     eksekusiKoneksiMQTT();
-    startWebRTCVideo(); 
 
     function kirimDataMQTT(payload) { 
         if (client && client.isConnected()) { 
