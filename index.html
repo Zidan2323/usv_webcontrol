@@ -94,8 +94,12 @@
     <div id="statusLabel" class="status">MENGHUBUNGKAN MQTT...</div>
     
     <div class="video-container">
-        <iframe src="https://postbox-papyrus-left.ngrok-free.dev/cam/" style="width: 100%; height: 100%; border: none; background: #000;" allow="autoplay; fullscreen"></iframe>
+        <iframe id="videoIframe" src="https://postbox-papyrus-left.ngrok-free.dev/cam/" style="width: 100%; height: 100%; border: none; background: #000;" allow="autoplay; fullscreen"></iframe>
         <div class="video-overlay">🔴 LIVE WEBRTC CAM</div>
+        
+        <button id="btnBypassManual" onclick="bukaBypassTabBaru()" style="position: absolute; bottom: 10px; right: 10px; background: #ffb703; color: #1a1a22; border: none; padding: 5px 10px; font-size: 11px; font-weight: bold; border-radius: 5px; cursor: pointer; display: block; z-index: 10;">
+            🔑 FIX VIDEO BLANK
+        </button>
     </div>
 
     <div class="data-display">
@@ -127,6 +131,18 @@
     const BROKER_HOST = "broker.emqx.io";
     const BROKER_PORT = 8084; 
     const TOPIC = "undip/aterkia/zidan/control";
+    const NGROK_CAM_URL = "https://postbox-papyrus-left.ngrok-free.dev/cam/";
+
+    // --- TRIK FUNGSIONAL: PAKSA COOKIE NGOROK AKTIF ---
+    function bukaBypassTabBaru() {
+        // Membuka link ngrok langsung di tab baru agar user bisa klik "Visit Site" sekali saja
+        window.open(NGROK_CAM_URL, '_blank');
+        
+        // Setelah user kembali ke web GCS, reload iframe agar langsung masuk
+        setTimeout(() => {
+            document.getElementById("videoIframe").src = NGROK_CAM_URL;
+        }, 1000);
+    }
 
     let lastArah = "straight"; let lastSpeed = 50; let sendInterval = null;
     const statusLabel = document.getElementById("statusLabel");
@@ -162,7 +178,6 @@
         });
     }
 
-    // Jalankan koneksi MQTT saat halaman siap
     eksekusiKoneksiMQTT();
 
     function kirimDataMQTT(payload) { 
@@ -181,7 +196,6 @@
         } 
     }
 
-    // --- KONTROL INDIKATOR WARNA SLIDER DUA ARAH ---
     function updateSliderThrottle(val) {
         let rawValue = parseInt(val); lastSpeed = rawValue;
         let displayPercent = 0; let statusMotor = "DIAM";
@@ -208,7 +222,6 @@
         picuLoopPengiriman();
     }
 
-    // --- ENGINE JOYSTICK EMBEDDED WITH RIGHT-CLICK FAILSAFE ---
     var nipplejs = {
         create: function (options) {
             var zone = options.zone; 
@@ -295,5 +308,3 @@
         updateSliderThrottle(50);
     };
 </script>
-</body>
-</html>
