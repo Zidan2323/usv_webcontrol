@@ -159,14 +159,14 @@
             
             await pc.setLocalDescription({ type: 'offer', sdp: sdp });
 
-            print("Mengirim jabat tangan WHEP ke Ngrok dengan bypass header...");
+            console.log("Mengirim jabat tangan WHEP ke Ngrok dengan bypass header...");
 
-            // JABAT TANGAN VIA FETCH SESUAI REQUEST ANDA (MEMOTONG VISIT SITE)
+            // JABAT TANGAN VIA FETCH DENGAN HEADERS BYPASS
             const response = await fetch(WHEP_URL, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'text/plain',
-                    'ngrok-skip-browser-warning': 'true' // <-- PAKSA BYPASS DI SINI
+                    'ngrok-skip-browser-warning': 'true' 
                 },
                 body: sdp
             });
@@ -362,3 +362,5 @@
         updateSliderThrottle(50);
     };
 </script>
+</body>
+</html>
