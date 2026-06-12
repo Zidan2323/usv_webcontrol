@@ -94,8 +94,8 @@
     <div id="statusLabel" class="status">MENGHUBUNGKAN MQTT...</div>
     
     <div class="video-container">
-        <iframe id="videoIframe" src="" style="width: 100%; height: 100%; border: none; background: #000;" allow="autoplay; fullscreen"></iframe>
-        <div class="video-overlay">🔴 LIVE WEBRTC CAM</div>
+        <video id="videoUSV" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover; background: #000;"></video>
+        <div class="video-overlay">🔴 LIVE WEBRTC CAM (NATIVE)</div>
     </div>
 
     <div class="data-display">
@@ -128,30 +128,72 @@
     const BROKER_PORT = 8084; 
     const TOPIC = "undip/aterkia/zidan/control";
     
-    // URL Ngrok Statis Anda
-    const NGROK_URL = "https://postbox-papyrus-left.ngrok-free.dev/cam/";
+    // URL Endpoint WHEP Ngrok Anda
+    const WHEP_URL = "https://postbox-papyrus-left.ngrok-free.dev/cam/whep";
 
-    // --- FUNGSI BYPASS WARNING NGROK (LANGSUNG TO THE POINT) ---
-    async function bypassNgrokDanMuatVideo() {
+    // --- CLIENT WEBRTC HANDSHAKE ENGINE (WHEP) WITH NGROK BYPASS ---
+    async function startWebRTCVideo() {
+        const videoElement = document.getElementById('videoUSV');
+        
+        // Buat objek RTCPeerConnection standar browser
+        const pc = new RTCPeerConnection({
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+            bundlePolicy: "max-bundle"
+        });
+
+        // Paksa peer connection hanya meminta data VIDEO saja (recvonly)
+        pc.addTransceiver('video', { direction: 'recvonly' });
+
+        // Ketika data stream video dari Raspi diterima, pasang ke tag <video>
+        pc.ontrack = (event) => {
+            if (videoElement.srcObject !== event.streams[0]) {
+                videoElement.srcObject = event.streams[0];
+                console.log('✓ Video stream USV WebRTC berhasil dipasang secara native.');
+            }
+        };
+
         try {
-            // Melakukan fetch dengan header khusus untuk mematikan halaman peringatan Ngrok
-            await fetch(NGROK_URL, {
-                method: "GET",
-                headers: {
-                    "ngrok-skip-browser-warning": "true"
-                }
+            // Buat penawaran koneksi (SDP Offer)
+            const offer = await pc.createOffer();
+            let sdp = offer.sdp;
+            
+            await pc.setLocalDescription({ type: 'offer', sdp: sdp });
+
+            print("Mengirim jabat tangan WHEP ke Ngrok dengan bypass header...");
+
+            // JABAT TANGAN VIA FETCH SESUAI REQUEST ANDA (MEMOTONG VISIT SITE)
+            const response = await fetch(WHEP_URL, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'text/plain',
+                    'ngrok-skip-browser-warning': 'true' // <-- PAKSA BYPASS DI SINI
+                },
+                body: sdp
             });
-            // Jika jabat tangan berhasil, masukkan URL ke iframe agar video langsung putar
-            document.getElementById("videoIframe").src = NGROK_URL;
-            console.log("✓ Bypass Ngrok sukses, video langsung dimulai.");
+
+            if (!response.ok) {
+                throw new Error('Server merespons status: ' + response.status);
+            }
+
+            // Ambil jawaban SDP dari MediaMTX Raspi
+            const answerSdp = await response.text();
+            
+            // Selesaikan koneksi WebRTC
+            await pc.setRemoteDescription(new RTCSessionDescription({
+                type: 'answer',
+                sdp: answerSdp
+            }));
+            
+            console.log("✓ Jalur WebRTC sukses terbuka tanpa interupsi!");
+            
         } catch (error) {
-            // Jika terkena CORS block saat fetch, kita inject src langsung sebagai failsafe
-            document.getElementById("videoIframe").src = NGROK_URL;
-            console.log("Membuka video stream...");
+            console.error('Koneksi WebRTC Gagal:', error);
+            // Rekoneksi otomatis setiap 5 detik jika internet kapal drop di lapangan
+            setTimeout(startWebRTCVideo, 5000); 
         }
     }
 
-    // --- LAUNCH ENGINE ---
+    // --- LAUNCH ENGINE CONTROLLER ---
     let lastArah = "straight"; let lastSpeed = 50; let sendInterval = null;
     const statusLabel = document.getElementById("statusLabel");
 
@@ -186,9 +228,9 @@
         });
     }
 
-    // Jalankan semua fungsi saat halaman siap
+    // Eksekusi koneksi MQTT dan jalankan video WHEP secara simultan
     eksekusiKoneksiMQTT();
-    bypassNgrokDanMuatVideo(); // Mengaktifkan auto-start video tanpa klik
+    startWebRTCVideo(); 
 
     function kirimDataMQTT(payload) { 
         if (client && client.isConnected()) { 
