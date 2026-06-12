@@ -94,9 +94,9 @@
     <div id="statusLabel" class="status">MENGHUBUNGKAN MQTT...</div>
     
     <div class="video-container">
-    <iframe src="https://postbox-papyrus-left.ngrok-free.dev/cam/" style="width: 100%; height: 100%; border: none; background: #000;" allow="autoplay; fullscreen"></iframe>
-    <div class="video-overlay">🔴 LIVE WEBRTC CAM</div>
-</div>
+        <iframe id="videoIframe" src="" style="width: 100%; height: 100%; border: none; background: #000;" allow="autoplay; fullscreen"></iframe>
+        <div class="video-overlay">🔴 LIVE WEBRTC CAM</div>
+    </div>
 
     <div class="data-display">
         <div>KEMUDI: <span id="txtArah" class="val">straight</span></div>
@@ -125,13 +125,36 @@
 <script>
     // --- KONFIGURASI ALAMAT JALUR ---
     const BROKER_HOST = "broker.emqx.io";
-    const BROKER_PORT = 8084; // 2. DIUBAH: Menggunakan port 8084 untuk Secure WebSockets (WSS)
+    const BROKER_PORT = 8084; 
     const TOPIC = "undip/aterkia/zidan/control";
+    
+    // URL Ngrok Statis Anda
+    const NGROK_URL = "https://postbox-papyrus-left.ngrok-free.dev/cam/";
 
+    // --- FUNGSI BYPASS WARNING NGROK (LANGSUNG TO THE POINT) ---
+    async function bypassNgrokDanMuatVideo() {
+        try {
+            // Melakukan fetch dengan header khusus untuk mematikan halaman peringatan Ngrok
+            await fetch(NGROK_URL, {
+                method: "GET",
+                headers: {
+                    "ngrok-skip-browser-warning": "true"
+                }
+            });
+            // Jika jabat tangan berhasil, masukkan URL ke iframe agar video langsung putar
+            document.getElementById("videoIframe").src = NGROK_URL;
+            console.log("✓ Bypass Ngrok sukses, video langsung dimulai.");
+        } catch (error) {
+            // Jika terkena CORS block saat fetch, kita inject src langsung sebagai failsafe
+            document.getElementById("videoIframe").src = NGROK_URL;
+            console.log("Membuka video stream...");
+        }
+    }
+
+    // --- LAUNCH ENGINE ---
     let lastArah = "straight"; let lastSpeed = 50; let sendInterval = null;
     const statusLabel = document.getElementById("statusLabel");
 
-    // 3. INISIALISASI ULANG KLIEN MENGGUNAKAN LIBRARY PAHO RESMI VIA CDN
     const clientId = "web_gcs_" + Math.random().toString(16).substr(2, 8);
     const client = new Paho.MQTT.Client(BROKER_HOST, Number(BROKER_PORT), clientId);
 
@@ -139,8 +162,7 @@
         statusLabel.innerText = "KONEKSI TERPUTUS"; 
         statusLabel.className = "status"; 
         statusLabel.style.backgroundColor = "#f72585";
-        console.log("Koneksi terputus: " + responseObject.errorMessage);
-        setTimeout(eksekusiKoneksiMQTT, 3000); // Otomatis coba hubungkan kembali jika putus di danau/lapangan
+        setTimeout(eksekusiKoneksiMQTT, 3000);
     };
 
     function eksekusiKoneksiMQTT() {
@@ -149,25 +171,24 @@
         statusLabel.style.backgroundColor = "#f72585";
         
         client.connect({
-            useSSL: true, // 4. WAJIB TRUE: Memaksa koneksi menggunakan wss:// agar lolos enkripsi HTTPS Vercel
+            useSSL: true,
             timeout: 5,
             onSuccess: () => { 
                 statusLabel.innerText = "ONLINE (CONTROL & VIDEO READY)"; 
                 statusLabel.className = "status connected"; 
-                console.log("Sukses Terhubung ke EMQX via SSL/WSS!");
             },
             onFailure: (error) => { 
                 statusLabel.innerText = "KONEKSI GAGAL"; 
                 statusLabel.className = "status"; 
                 statusLabel.style.backgroundColor = "#f72585";
-                console.error("Gagal terhubung: ", error);
-                setTimeout(eksekusiKoneksiMQTT, 5000); // Mencoba ulang jabat tangan jika jaringan drop
+                setTimeout(eksekusiKoneksiMQTT, 5000);
             }
         });
     }
 
-    // Jalankan jabat tangan MQTT saat GCS dibuka
+    // Jalankan semua fungsi saat halaman siap
     eksekusiKoneksiMQTT();
+    bypassNgrokDanMuatVideo(); // Mengaktifkan auto-start video tanpa klik
 
     function kirimDataMQTT(payload) { 
         if (client && client.isConnected()) { 
@@ -299,5 +320,3 @@
         updateSliderThrottle(50);
     };
 </script>
-</body>
-</html>
