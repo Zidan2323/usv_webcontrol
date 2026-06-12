@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GCS Kapal USV - Tugas Akhir</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a22; color: #fff; margin: 0; padding: 15px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 95vh; overflow: hidden; user-select: none;
+        }
+        .container {
+            width: 100%; max-width: 480px; background: #252533; padding: 15px;
+            border-radius: 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.6); text-align: center; box-sizing: border-box;
+        }
+        h2 { color: #4cc9f0; margin: 0 0 5px 0; font-size: 20px; }
+        .status {
+            display: inline-block; padding: 4px 12px; border-radius: 15px;
+            font-weight: bold; font-size: 12px; background-color: #f72585; margin-bottom: 10px; transition: 0.3s;
+        }
+        .connected { background-color: #4cc9f0; color: #1a1a22; }
+        
+        /* --- Video Stream Box Layout --- */
+        .video-container {
+            width: 100%; height: 240px; background-color: #000; border-radius: 12px;
+            margin-bottom: 15px; overflow: hidden; position: relative; border: 2px solid #3f3f5a;
+        }
+        video {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .video-overlay {
+            position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.6);
+            padding: 4px 8px; border-radius: 6px; font-size: 11px; font-family: monospace;
+            color: #4cc9f0; pointer-events: none;
+        }
+
+        .data-display {
+            display: flex; justify-content: space-around; background: #1e1e28;
+            padding: 10px; border-radius: 10px; margin-bottom: 15px; font-family: monospace; font-size: 13px;
+        }
+        .val { color: #4cc9f0; font-weight: bold; }
+
+        .control-grid {
+            display: table; width: 100%; margin-bottom: 15px;
+        }
+        .col-slider {
+            display: table-cell; width: 35%; vertical-align: middle; text-align: center;
+        }
+        .col-joystick {
+            display: table-cell; width: 65%; vertical-align: middle; text-align: center;
+        }
+
+        /* Desain Bar Geser Bidirectional Slider */
+        .slider-wrapper {
+            height: 180px; width: 36px; display: inline-block; position: relative;
+            background: #1e1e28; border-radius: 18px; border: 2px solid #333; overflow: hidden;
+        }
+        .slider-fill-track {
+            position: absolute; left: 0; width: 100%; background: #4cc9f0;
+            box-shadow: 0 0 10px rgba(76, 201, 240, 0.6);
+        }
+        .slider-vertical {
+            position: absolute; top: 0; left: 0; width: 36px; height: 180px; margin: 0;
+            opacity: 0; cursor: pointer; writing-mode: bt-lr; appearance: slider-vertical; -webkit-appearance: slider-vertical; z-index: 3;
+        }
+        .slider-knob {
+            position: absolute; left: 50%; width: 30px; height: 30px; background: #ffffff;
+            border: 3px solid #4361ee; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 4;
+        }
+
+        .control-label {
+            font-size: 11px; color: #888; margin-top: 6px; font-weight: bold; letter-spacing: 1px;
+        }
+
+        #joystick-zone {
+            width: 170px; height: 170px; background: #1e1e28; margin: 0 auto;
+            border-radius: 50%; position: relative; border: 2px dashed #4361ee;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.6);
+        }
+        
+        button.stop-btn {
+            width: 100%; padding: 12px; font-size: 15px; font-weight: bold;
+            background-color: #f72585; color: white; border: none; border-radius: 10px;
+            cursor: pointer; box-shadow: 0 4px 10px rgba(247, 37, 133, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>GCS UTAMA - KAPAL USV</h2>
+    <p style="margin: 0 0 10px 0; color:#888; font-size: 12px;">Monitoring Real-time WebRTC Camera & MQTT Control</p>
+    
+    <div id="statusLabel" class="status">MENGHUBUNGKAN MQTT...</div>
+    
+    <div class="video-container">
+        <iframe src="http://100.94.172.71:8889/cam/" style="width: 100%; height: 100%; border: none; background: #000;" allow="autoplay; fullscreen"></iframe>
+        <div class="video-overlay">🔴 LIVE WEBRTC CAM</div>
+    </div>
+
+    <div class="data-display">
+        <div>KEMUDI: <span id="txtArah" class="val">straight</span></div>
+        <div>THROTTLE: <span id="txtSpeed" class="val">0</span>% (<span id="txtStatusMotor" style="color: #ffb703;">DIAM</span>)</div>
+    </div>
+
+    <div class="control-grid">
+        <div class="col-slider">
+            <div class="slider-wrapper">
+                <div id="sliderFill" class="slider-fill-track"></div>
+                <div id="sliderKnob" class="slider-knob"></div>
+                <input type="range" id="throttleSlider" class="slider-vertical" min="0" max="100" value="50" oninput="updateSliderThrottle(this.value)">
+            </div>
+            <div class="control-label">THROTTLE</div>
+        </div>
+        
+        <div class="col-joystick">
+            <div id="joystick-zone"></div>
+            <div class="control-label" style="margin-top: 10px;">STEERING</div>
+        </div>
+    </div>
+
+    <button class="stop-btn" onclick="emergencyStop()">🛑 EMERGENCY STOP</button>
+</div>
+
+<script>
+    // --- KONFIGURASI ADRES JALUR ---
+    const RASPBERRY_PI_IP = "192.168.1.16"; // Alamat IP asli ter-update milik Raspberry Pi Anda!
+    const BROKER_HOST = "broker.emqx.io";
+    const BROKER_PORT = 8083;
+    const TOPIC = "undip/aterkia/zidan/control";
+
+    // --- PAHO MQTT INTERNAL LIGHTWEIGHT ENGINE ---
+    window.Paho = {
+        MQTT: {
+            Client: function(host, port, clientId) {
+                this.host = host; this.port = Number(port);
+                this.clientId = clientId || "web_" + Math.random().toString(16).substr(2,8);
+                this.connected = false; this.onConnectionLost = null; this.socket = null;
+                this.connect = function(options) {
+                    var self = this;
+                    try {
+                        self.socket = new WebSocket("ws://" + self.host + ":" + self.port + "/mqtt", "mqtt");
+                        self.socket.binaryType = "arraybuffer";
+                        self.socket.onopen = function() {
+                            var pkt = new Uint8Array([16,12,0,4,77,81,84,84,4,2,0,60,0,0]);
+                            self.socket.send(pkt);
+                        };
+                        self.socket.onmessage = function(e) {
+                            var dv = new DataView(e.data);
+                            if (dv.getUint8(0) === 32) {
+                                self.connected = true;
+                                if (options && options.onSuccess) options.onSuccess();
+                            }
+                        };
+                        self.socket.onclose = function() { self.connected = false; if (self.onConnectionLost) self.onConnectionLost({errorMessage: "Lost connection"}); };
+                        self.socket.onerror = function() { self.connected = false; if (options && options.onFailure) options.onFailure({errorMessage: "Connection error"}); };
+                    } catch(err) { self.connected = false; if (options && options.onFailure) options.onFailure({errorMessage: err.message}); }
+                };
+                this.send = function(msgObj) {
+                    if (this.connected && this.socket) {
+                        var topic = msgObj.destinationName; var payload = msgObj.payloadString;
+                        var tLen = topic.length; var pLen = payload.length; var remLen = 2 + tLen + pLen;
+                        var pkt = new Uint8Array(2 + remLen); var idx = 0;
+                        pkt[idx++] = 48; pkt[idx++] = remLen;
+                        pkt[idx++] = (tLen >> 8) & 255; pkt[idx++] = tLen & 255;
+                        for (var i = 0; i < tLen; i++) pkt[idx++] = topic.charCodeAt(i);
+                        for (var i = 0; i < pLen; i++) pkt[idx++] = payload.charCodeAt(i);
+                        this.socket.send(pkt);
+                    }
+                };
+                this.isConnected = function() { return this.connected; };
+            },
+            Message: function(payloadStr) { this.payloadString = payloadStr; this.destinationName = ""; }
+        }
+    };
+
+    let lastArah = "straight"; let lastSpeed = 50; let sendInterval = null;
+    const statusLabel = document.getElementById("statusLabel");
+    const client = new Paho.MQTT.Client(BROKER_HOST, Number(BROKER_PORT), "client_" + Math.random().toString(16).substr(2, 8));
+
+    client.onConnectionLost = () => { statusLabel.innerText = "KONEKSI TERPUTUS"; statusLabel.className = "status"; statusLabel.style.backgroundColor = "#f72585"; };
+    client.connect({
+        onSuccess: () => { statusLabel.innerText = "ONLINE (CONTROL & VIDEO READY)"; statusLabel.className = "status connected"; },
+        onFailure: () => { statusLabel.innerText = "KONEKSI GAGAL"; statusLabel.className = "status"; statusLabel.style.backgroundColor = "#f72585"; }
+    });
+
+    function kirimDataMQTT(payload) { if (client.isConnected()) { const message = new Paho.MQTT.Message(payload); message.destinationName = TOPIC; client.send(message); } }
+    function picuLoopPengiriman() { if (!sendInterval) { sendInterval = setInterval(() => { kirimDataMQTT(`${lastArah},${lastSpeed}`); }, 120); } }
+
+    // --- KONTROL INDIKATOR WARNA SLIDER DUA ARAH ---
+    function updateSliderThrottle(val) {
+        let rawValue = parseInt(val); lastSpeed = rawValue;
+        let displayPercent = 0; let statusMotor = "DIAM";
+        const fillElement = document.getElementById("sliderFill");
+        const knobElement = document.getElementById("sliderKnob");
+        
+        let knobTopPos = 180 - (rawValue * 1.8);
+        knobElement.style.top = knobTopPos + "px";
+
+        if (rawValue > 50) {
+            displayPercent = (rawValue - 50) * 2; statusMotor = "MAJU";
+            fillElement.style.top = (180 - (rawValue * 1.8)) + "px";
+            fillElement.style.height = ((rawValue - 50) * 1.8) + "px";
+        } else if (rawValue < 50) {
+            displayPercent = (50 - rawValue) * 2; statusMotor = "MUNDUR";
+            fillElement.style.top = "90px";
+            fillElement.style.height = ((50 - rawValue) * 1.8) + "px";
+        } else {
+            displayPercent = 0; statusMotor = "DIAM";
+            fillElement.style.top = "90px"; fillElement.style.height = "0px";
+        }
+        document.getElementById("txtSpeed").innerText = displayPercent;
+        document.getElementById("txtStatusMotor").innerText = statusMotor;
+        picuLoopPengiriman();
+    }
+
+  // --- ENGINE JOYSTICK EMBEDDED WITH RIGHT-CLICK FAILSAFE ---
+var nipplejs = {
+    create: function (options) {
+        var zone = options.zone; 
+        var box = document.createElement("div");
+        box.style.position = "absolute"; box.style.width = "110px"; box.style.height = "110px"; box.style.left = "50%"; box.style.top = "50%"; box.style.transform = "translate(-50%, -50%)";
+        box.style.borderRadius = "50%"; box.style.background = "rgba(67, 97, 238, 0.2)"; box.style.border = "2px solid #4361ee";
+        
+        var nipple = document.createElement("div");
+        nipple.style.width = "45px"; nipple.style.height = "45px"; nipple.style.position = "absolute"; nipple.style.left = "32.5px"; nipple.style.top = "32.5px"; nipple.style.borderRadius = "50%";
+        nipple.style.background = "#4361ee"; nipple.style.boxShadow = "0 4px 10px rgba(0,0,0,0.5)"; nipple.style.cursor = "pointer";
+        
+        box.appendChild(nipple); 
+        zone.appendChild(box); 
+        
+        var isRightDragging = false;
+        var callbacks = {};
+
+        var moveHandler = function (e) {
+            if (!isRightDragging) return; // FAILSAFE: Jika tidak ditekan/klik kanan lepas, abaikan gerakan!
+            e.preventDefault();
+            var touch = e.touches ? e.touches[0] : e;
+            var rect = box.getBoundingClientRect();
+            var deltaX = touch.pageX - (rect.left + 55);
+            var deltaY = touch.pageY - (rect.top + 55);
+            var distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            
+            if (distance > 55) { deltaX = (deltaX / distance) * 55; deltaY = (deltaY / distance) * 55; }
+            nipple.style.transform = "translate(" + deltaX + "px, " + deltaY + "px)";
+            
+            var directionX = "straight";
+            if (deltaX < -15) directionX = "left";
+            else if (deltaX > 15) directionX = "right";
+            
+            if (callbacks["move"]) callbacks["move"](null, { direction: { x: directionX }, distance: distance });
+        };
+
+        var endHandler = function () {
+            if (!isRightDragging) return;
+            isRightDragging = false;
+            // FAILSAFE AUTO-CENTERING: Balikkan bola ke tengah seketika klik kanan lepas
+            nipple.style.transform = "translate(0px, 0px)";
+            if (callbacks["end"]) callbacks["end"]();
+        };
+
+        // Memicu kendali hanya lewat Klik Kanan (Button 2)
+        zone.addEventListener("mousedown", function (e) {
+            if (e.button === 2) { // 2 artinya Klik Kanan murni
+                isRightDragging = true;
+                document.addEventListener("mousemove", moveHandler);
+                document.addEventListener("mouseup", endHandler);
+            }
+        });
+
+        // Pengaman ekstra jika kursor terseret keluar area jendela browser laptop saat trial
+        window.addEventListener("mouseleave", endHandler);
+        window.addEventListener("mouseup", endHandler);
+
+        return { on: function (evt, cb) { callbacks[evt] = cb; } };
+    }
+};
+
+// Matikan menu drop-down klik kanan bawaan browser Chrome agar tidak mengganggu pandangan layar GCS
+document.getElementById('joystick-zone').addEventListener('contextmenu', e => e.preventDefault());
+
+const joyManager = nipplejs.create({ zone: document.getElementById('joystick-zone') });
+joyManager.on('move', (evt, data) => { 
+    if (!data.direction) return; 
+    let arah = data.direction.x || "straight"; 
+    document.getElementById("txtArah").innerText = arah; 
+    lastArah = arah; 
+    picuLoopPengiriman(); 
+});
+joyManager.on('end', () => { 
+    lastArah = "straight"; 
+    document.getElementById("txtArah").innerText = "straight"; 
+    picuLoopPengiriman(); 
+});
+    function emergencyStop() {
+        clearInterval(sendInterval); sendInterval = null; lastArah = "straight"; lastSpeed = 50;
+        document.getElementById("throttleSlider").value = 50;
+        document.getElementById("sliderFill").style.top = "90px"; document.getElementById("sliderFill").style.height = "0px"; document.getElementById("sliderKnob").style.top = "90px";
+        document.getElementById("txtArah").innerText = "straight"; document.getElementById("txtSpeed").innerText = "0"; document.getElementById("txtStatusMotor").innerText = "DIAM";
+        kirimDataMQTT("straight,50");
+    }
+
+    // --- CLIENT WEBRTC HANDSHAKE ENGINE (WHEP) TO MEDIAMTX (FIXED FOR BAD REQUEST 400) ---
+    async function startWebRTCVideo() {
+        const videoElement = document.getElementById('videoUSV');
+        
+        const pc = new RTCPeerConnection({
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+            bundlePolicy: "max-bundle"
+        });
+
+        // Paksa jabat tangan hanya memproses elemen VIDEO saja
+        pc.addTransceiver('video', { direction: 'recvonly' });
+
+        pc.ontrack = (event) => {
+            if (videoElement.srcObject !== event.streams[0]) {
+                videoElement.srcObject = event.streams[0];
+                console.log('Video stream USV WebRTC berhasil dipasang.');
+            }
+        };
+
+        try {
+            const offer = await pc.createOffer();
+            let sdp = offer.sdp;
+            
+            await pc.setLocalDescription({ type: 'offer', sdp: sdp });
+
+            // Handshake SDP ke biner MediaMTX Raspberry Pi via port HTTP WebRTC 8889
+            // Header menggunakan 'text/plain' untuk mencegah penolakan format penawaran media
+            const response = await fetch(`http://${RASPBERRY_PI_IP}:8889/cam/whep`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: sdp
+            });
+
+            if (!response.ok) {
+                throw new Error('Server merespons status: ' + response.status);
+            }
+
+            const answerSdp = await response.text();
+            await pc.setRemoteDescription(new RTCSessionDescription({
+                type: 'answer',
+                sdp: answerSdp
+            }));
+            
+            console.log("Jabat tangan WebRTC Sukses Terbuka!");
+            
+        } catch (error) {
+            console.error('Koneksi WebRTC Gagal:', error);
+            setTimeout(startWebRTCVideo, 7000); // Rekoneksi otomatis setiap 7 detik jika terjadi gangguan Wi-Fi
+        }
+    }
+
+    window.onload = function() {
+        updateSliderThrottle(50);
+        // startWebRTCVideo(); // Dimatikan untuk mencegah error 400 Bad Request, video dihandle langsung secara native oleh iframe MediaMTX
+    };
+</script>
+</body>
+</html>
