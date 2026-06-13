@@ -312,14 +312,18 @@
 
     <script type="text/javascript">
         const logBox = document.getElementById("consoleLog");
+        
+        // FIX SAKTI: Fungsi logger aman menggunakan objek DOM yang valid
         function logKeConsole(pesan) {
-            const waktu = new Date().toLocaleTimeString();
-            logBox.innerHTML += `[${waktu}] ${pesan}<br>`;
-            logBox.scrollTop = consoleBox.scrollHeight;
+            if (logBox) {
+                const waktu = new Date().toLocaleTimeString();
+                logBox.innerHTML += `[${waktu}] ${pesan}<br>`;
+                logBox.scrollTop = logBox.scrollHeight; 
+            }
         }
 
-        // --- SOLUSI UTAMA: MENGGUNAKAN ENKRIPSI PENUH WEBSOCKET SECURE (WSS) RESMI EMQX ---
-        const BROKER_URL = "wss://broker.emqx.io:8084/mqtt"; // <-- Port 8084 WSS menjebol blokir Vercel
+        // FIX SAKTI: Port diganti ke 8084 (WebSocket Secure) agar lolos enkripsi HTTPS Vercel
+        const BROKER_URL = "wss://broker.emqx.io:8084/mqtt"; 
         const TOPIC_CONTROL = "undip/aterkia/zidan/control";
         const TOPIC_TELEMETRY = "undip/aterkia/zidan/telemetry";
         const LINK_VIDEO_STATIS = "https://3bovjczenb.localto.net/video_feed";
@@ -327,7 +331,7 @@
         let currentSteerDirection = "straight";
         let isDragging = false;
 
-        logKeConsole("Menghubungkan ke Broker Aman EMQX via SSL/TLS...");
+        logKeConsole("Menghubungkan ke Broker Aman EMQX via SSL/TLS Port 8084...");
 
         // Inisialisasi client lewat library MQTT modern
         const client = mqtt.connect(BROKER_URL, {
@@ -339,8 +343,10 @@
         client.on('connect', () => {
             logKeConsole("✅ KONEKSI TELEMETRI GLOBAL ONLINE SAKTI!");
             const statusBar = document.getElementById("statusMqtt");
-            statusBar.innerText = "ONLINE";
-            statusBar.className = "status-bar online";
+            if (statusBar) {
+                statusBar.innerText = "ONLINE";
+                statusBar.className = "status-bar online";
+            }
             client.subscribe(TOPIC_TELEMETRY);
         });
 
@@ -357,8 +363,10 @@
 
         client.on('close', () => {
             const statusBar = document.getElementById("statusMqtt");
-            statusBar.innerText = "DISCONNECTED";
-            statusBar.className = "status-bar";
+            if (statusBar) {
+                statusBar.innerText = "DISCONNECTED";
+                statusBar.className = "status-bar";
+            }
         });
 
         client.on('error', (err) => {
@@ -371,7 +379,6 @@
             }
         }
 
-        // --- SISTEM TRANSMISI THROTTLE CENTER-ZERO ---
         function kirimThrottle(val) {
             let statusTeks = "";
             if (val == 50) {
@@ -394,7 +401,7 @@
             kirimPerintah("stop,50");
         }
 
-        // --- SISTEM ENGINE JOYSTICK REKAYASA KEMUDI RINGAN ---
+        // --- SISTEM ENGINE JOYSTICK ---
         const joyZone = document.getElementById('joyZone');
         const joyHandle = document.getElementById('joyHandle');
 
@@ -410,7 +417,7 @@
 
             let arah = "straight";
             if (deltaX < -20) arah = "left";
-            else if (deltaX > 20) origin = arah = "right";
+            else if (deltaX > 20) arah = "right";
 
             if (currentSteerDirection !== arah) {
                 currentSteerDirection = arah;
