@@ -19,13 +19,11 @@
             border: 1px solid #e1e4e8; display: flex; flex-direction: column;
         }
 
-        /* Header */
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         h2 { color: #ff6b00; margin: 0; font-size: 16px; font-weight: 800; text-transform: uppercase; }
         .status { padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 10px; background-color: #d9383a; color: #fff; }
         .connected { background-color: #2ed573; }
 
-        /* LIVE STREAMING VIDEO */
         .video-wrapper {
             width: 100%; height: 180px; background-color: #000; border-radius: 12px; border: 2px solid #ff6b00;
             overflow: hidden; position: relative; margin-bottom: 8px;
@@ -43,23 +41,19 @@
         }
         .reconnect-btn:active { background: #ff6b00; color: white; }
 
-        /* MPU TELEMETRY WIDGET */
         .mpu-grid { display: flex; gap: 8px; margin-bottom: 12px; }
         .mpu-card { flex: 1; background: #f4f5f7; border: 1px solid #e1e4e8; border-radius: 10px; padding: 8px 4px; text-align: center; }
         .mpu-label { font-size: 9px; font-weight: bold; color: #666; text-transform: uppercase; margin-bottom: 4px; }
         .mpu-val { font-size: 15px; font-weight: bold; color: #2b7de9; font-family: monospace; }
 
-        /* DATA MONITOR MOTOR */
         .data-stats-grid {
             display: flex; justify-content: space-around; background: #fdf1e7;
             padding: 10px; border-radius: 10px; margin-bottom: 15px; font-family: monospace; font-size: 12px; border: 1px solid #ffd8b3;
         }
 
-        /* PANEL KONTROL SEJAJAR (THROTTLE & STEERING) */
         .controls-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .col-throttle { width: 35%; display: flex; flex-direction: column; align-items: center; }
         
-        /* Jalur Pengisian Bidirectional murni dari tengah */
         .slider-wrap {
             height: 130px; width: 45px; background: #f0f2f5; border-radius: 15px; border: 2px solid #e1e4e8;
             position: relative; overflow: hidden; cursor: pointer;
@@ -74,7 +68,6 @@
         #joy-zone-simple { width: 130px; height: 130px; background: #fdf1e7; border-radius: 50%; border: 2px dashed #ffbb80; position: relative; }
         .control-label { font-size: 9px; font-weight: bold; margin-top: 5px; text-transform: uppercase; color: #555; letter-spacing: 0.5px; }
 
-        /* EMERGENCY BUTTON */
         .stop-btn {
             width: 100%; padding: 14px; font-size: 14px; font-weight: bold; text-transform: uppercase;
             background: #d9383a; color: white; border: none; border-radius: 10px; cursor: pointer;
@@ -113,7 +106,7 @@
 
     <div class="data-stats-grid">
         <div>KEMUDI: <b id="txtArah" style="color:#ff6b00">straight</b></div>
-        <div>THROTLE: <b id="txtSpeed" style="color:#ff6b00">0</b>%</div>
+        <div>SPEED: <b id="txtSpeed" style="color:#ff6b00">0</b>%</div>
     </div>
 
     <div class="controls-row">
@@ -143,21 +136,36 @@
     let lastArah = "straight", lastSpeed = 50, sendInterval = null;
     const client = new Paho.MQTT.Client(BROKER, Number(PORT), "gcs_u_" + Math.random().toString(16).substr(2, 4));
 
-    function forceReconnectVideo() {
-        // Ganti /index.html menjadi / murni di ujungnya agar otomatis membaca sistem pemutar default MediaMTX
-        document.getElementById('camFrame').src = "https://tugasakhiradit.loca.lt/cam/?t=" + Date.now();
-    }
+    window.linkVideoGlobal = "about:blank";
 
     client.onMessageArrived = (msg) => {
         if (msg.destinationName === TOPIC_TELE) {
             const parts = msg.payloadString.split(",");
-            if (parts.length === 3) {
+            if (parts.length === 4) {
+                // 1. Update data sensor terfilter EMA
                 document.getElementById("txtRoll").innerText = parseFloat(parts[0]).toFixed(1);
                 document.getElementById("txtPitch").innerText = parseFloat(parts[1]).toFixed(1);
                 document.getElementById("txtYawRate").innerText = parseFloat(parts[2]).toFixed(1);
+                
+                // 2. Pasang link video HLS Cloudflare otomatis
+                const cfUrl = parts[3];
+                if (cfUrl !== "about:blank" && cfUrl !== "") {
+                    const linkFinal = cfUrl + "/cam/";
+                    const iframe = document.getElementById('camFrame');
+                    if (iframe.src === "about:blank" || iframe.src === "" || window.linkVideoGlobal !== linkFinal) {
+                        window.linkVideoGlobal = linkFinal;
+                        iframe.src = linkFinal;
+                    }
+                }
             }
         }
     };
+
+    function forceReconnectVideo() {
+        if (window.linkVideoGlobal !== "about:blank") {
+            document.getElementById('camFrame').src = window.linkVideoGlobal + "?t=" + Date.now();
+        }
+    }
 
     client.onConnectionLost = () => { 
         document.getElementById("statusLabel").innerText = "TERPUTUS";
@@ -171,7 +179,6 @@
                 document.getElementById("statusLabel").innerText = "ONLINE";
                 document.getElementById("statusLabel").className = "status connected";
                 client.subscribe(TOPIC_TELE);
-                forceReconnectVideo();
             }, onFailure: () => {
                 setTimeout(connectMQTT, 5000);
             }});
@@ -191,7 +198,6 @@
         if (!sendInterval) { sendInterval = setInterval(sendData, 120); }
     }
 
-    // --- ENGINE SLIDER BIDIRECTIONAL DARI TENGAH ---
     const throttleZone = document.getElementById("throttleZone");
     const sliderFill = document.getElementById("sliderFill");
     const sliderKnob = document.getElementById("sliderKnob");
@@ -217,7 +223,6 @@
 
         let nilaiDisplay = Math.abs((lastSpeed - 50) * 2);
         document.getElementById("txtSpeed").innerText = nilaiDisplay;
-        
         startSendingLoop();
     }
 
@@ -243,7 +248,6 @@
         document.addEventListener("touchend", touchEndHandler);
     }, { passive: true });
 
-    // --- STEERING JOYSTICK ENGINE ---
     var simpleJoy = {
         create: function(o) {
             var z = o.zone, b = document.createElement("div"), n = document.createElement("div"), isD = false;
@@ -261,12 +265,7 @@
                 startSendingLoop();
             };
             
-            const end = () => { 
-                isD = false; 
-                n.style.transform = "translateX(0px)"; 
-                lastArah = "straight"; 
-                document.getElementById("txtArah").innerText = "straight"; 
-            };
+            const end = () => { isD = false; n.style.transform = "translateX(0px)"; lastArah = "straight"; document.getElementById("txtArah").innerText = "straight"; };
             
             z.addEventListener("mousedown", () => isD = true);
             z.addEventListener("touchstart", () => isD = true, { passive: true });
