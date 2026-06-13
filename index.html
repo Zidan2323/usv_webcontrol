@@ -44,13 +44,13 @@
 
         /* MPU TELEMETRY WIDGET (ANGKA MURNI) */
         .mpu-grid {
-            display: flex; gap: 10px; margin-bottom: 12px;
+            display: flex; gap: 8px; margin-bottom: 12px;
         }
         .mpu-card {
-            flex: 1; background: #f4f5f7; border: 1px solid #e1e4e8; border-radius: 10px; padding: 10px; text-align: center;
+            flex: 1; background: #f4f5f7; border: 1px solid #e1e4e8; border-radius: 10px; padding: 8px 4px; text-align: center;
         }
-        .mpu-label { font-size: 10px; font-weight: bold; color: #666; text-transform: uppercase; margin-bottom: 4px; }
-        .mpu-val { font-size: 20px; font-weight: bold; color: #2b7de9; font-family: monospace; }
+        .mpu-label { font-size: 9px; font-weight: bold; color: #666; text-transform: uppercase; margin-bottom: 4px; }
+        .mpu-val { font-size: 16px; font-weight: bold; color: #2b7de9; font-family: monospace; }
 
         /* DATA MONITOR MOTOR */
         .data-stats-grid {
@@ -63,6 +63,8 @@
             display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
         }
         .col-throttle { width: 35%; display: flex; flex-direction: column; align-items: center; }
+        
+        /* Desain slider mekanis oranye tetap dipertahankan */
         .slider-wrap {
             height: 130px; width: 45px; background: #f0f2f5; border-radius: 15px; border: 2px solid #e1e4e8;
             position: relative; overflow: hidden;
@@ -91,18 +93,22 @@
 
     <div class="video-wrapper">
         <iframe id="camFrame" src="about:blank"></iframe>
-        <div class="video-overlay">🔴 LIVE CAM</div>
+        <div class="video-overlay">LIVE CAM</div>
     </div>
-    <button class="reconnect-btn" onclick="forceReconnectVideo()">🔄 RECONNECT</button>
+    <button class="reconnect-btn" onclick="forceReconnectVideo()">RECONNECT</button>
 
     <div class="mpu-grid">
         <div class="mpu-card">
-            <div class="mpu-label">⚡ Roll Angle</div>
+            <div class="mpu-label">Roll Angle</div>
             <div class="mpu-val"><span id="txtRoll">0.0</span>°</div>
         </div>
         <div class="mpu-card">
-            <div class="mpu-label">⚡ Pitch Angle</div>
+            <div class="mpu-label">Pitch Angle</div>
             <div class="mpu-val"><span id="txtPitch">0.0</span>°</div>
+        </div>
+        <div class="mpu-card">
+            <div class="mpu-label">Yaw Rate</div>
+            <div class="mpu-val"><span id="txtYawRate">0.0</span>°/s</div>
         </div>
     </div>
 
@@ -126,7 +132,7 @@
         </div>
     </div>
 
-    <button class="stop-btn" onclick="emergencyStop()">🛑 EMERGENCY STOP</button>
+    <button class="stop-btn" onclick="emergencyStop()">EMERGENCY STOP</button>
 </div>
 
 <script>
@@ -145,9 +151,10 @@
     client.onMessageArrived = (msg) => {
         if (msg.destinationName === TOPIC_TELE) {
             const parts = msg.payloadString.split(",");
-            if (parts.length === 2) {
+            if (parts.length === 3) {
                 document.getElementById("txtRoll").innerText = parseFloat(parts[0]).toFixed(1);
                 document.getElementById("txtPitch").innerText = parseFloat(parts[1]).toFixed(1);
+                document.getElementById("txtYawRate").innerText = parseFloat(parts[2]).toFixed(1);
             }
         }
     };
@@ -183,7 +190,6 @@
         if(!sendInterval) sendInterval = setInterval(sendData, 150);
     }
 
-    // Joystick 
     var simpleJoy = {
         create: function(o) {
             var z = o.zone, b = document.createElement("div"), n = document.createElement("div"), isD = false;
