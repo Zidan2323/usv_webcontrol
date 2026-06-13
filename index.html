@@ -47,7 +47,7 @@
         <div class="panel">
             <div class="panel-title">LIVE CAMERA MONITOR</div>
             <div class="video-wrapper">
-                <iframe id="camFrame" src="https://usv-master-stream.serveousercontent.com/video_feed"></iframe>
+                <iframe id="camFrame" src="https://31a49a5899cd0b70-182-8-211-11.serveousercontent.com/video_feed"></iframe>
             </div>
             <button class="btn-reconnect" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO STREAM</button>
         </div>
@@ -105,11 +105,13 @@
             }
         }
 
-        // NETRAL: Topik MQTT diubah menjadi struktur standar riset akademis
+        // --- DATA JARINGAN NETWORK MQTT ---
         const BROKER_URL = "wss://broker.emqx.io:8084/mqtt"; 
         const TOPIC_CONTROL = "usv/control/navigation";
         const TOPIC_TELEMETRY = "usv/telemetry/sensors";
-        const LINK_VIDEO_STATIS = "https://usv-master-stream.serveousercontent.com/video_feed";
+        
+        // Tempel link baru di sini juga untuk fungsi tombol penyegar stream
+        const LINK_VIDEO_STATIS = "https://31a49a5899cd0b70-182-8-211-11.serveousercontent.com/video_feed";
 
         let currentSteerDirection = "straight";
         let isDragging = false;
