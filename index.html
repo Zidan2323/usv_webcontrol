@@ -144,7 +144,8 @@
     const client = new Paho.MQTT.Client(BROKER, Number(PORT), "gcs_u_" + Math.random().toString(16).substr(2, 4));
 
     function forceReconnectVideo() {
-        document.getElementById('camFrame').src = "https://tugasakhiradit.loca.lt/cam/?t=" + Date.now();
+        // Ditambahkan /index.html di ujungnya untuk memaksa MediaMTX membuka pemutar berbasis HTTP/HLS
+        document.getElementById('camFrame').src = "https://tugasakhiradit.loca.lt/cam/index.html?t=" + Date.now();
     }
 
     client.onMessageArrived = (msg) => {
