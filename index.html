@@ -261,9 +261,9 @@
     <div class="main-container">
         
         <div class="panel">
-            <div class="panel-title">LIVE CAMERA MONITOR (SERVEO STATIS)</div>
+            <div class="panel-title">LIVE CAMERA MONITOR (LOCALTONET STATIS)</div>
             <div class="video-wrapper">
-                <iframe id="camFrame" src="https://aterkia-usv-zidan.serveo.net/video_feed"></iframe>
+                <iframe id="camFrame" src="https://3bovjczenb.localto.net"></iframe>
             </div>
             <button class="btn-reconnect" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO STREAM</button>
         </div>
@@ -311,32 +311,32 @@
     </div>
 
     <script type="text/javascript">
-        // --- DATA JARINGAN NETWORK MQTT ---
+        // --- CONFIG NETWORK DATA ---
         const BROKER = "broker.emqx.io";
-        const PORT = 8083; 
+        const PORT = 8083; // Port WebSockets aman untuk HTTPS Vercel
         const CLIENT_ID = "gcs_zidan_" + Math.random().toString(16).substr(2, 8);
         const TOPIC_CONTROL = "undip/aterkia/zidan/control";
         const TOPIC_TELEMETRY = "undip/aterkia/zidan/telemetry";
         
-        // FIX: Kunci domain transparan Serveo
-        const LINK_VIDEO_STATIS = "https://aterkia-usv-zidan.serveo.net/video_feed";
+        // REVISI SAKTI: Menyesuaikan alamat publik dasar murni
+        const LINK_VIDEO_STATIS = "https://3bovjczenb.localto.net";
 
         const client = new Paho.MQTT.Client(BROKER, PORT, CLIENT_ID);
         client.onConnectionLost = onConnectionLost;
         client.onMessageArrived = onMessageArrived;
 
         function hubungkanMqtt() {
-            logKeConsole("Mengetuk broker EMQX: " + BROKER);
+            logKeConsole("Mengetuk broker EMQX via WSS Port 8083: " + BROKER);
             client.connect({
                 onSuccess: onConnect,
                 onFailure: onFailure,
                 keepAliveInterval: 30,
-                useSSL: false
+                useSSL: true // REVISI SAKTI: Wajib TRUE agar tidak ditolak enkripsi https Vercel
             });
         }
 
         function onConnect() {
-            logKeConsole("✅ Komunikasi GCS Online!");
+            logKeConsole("✅ Komunikasi GCS Online Berhasil!");
             const statusBar = document.getElementById("statusMqtt");
             statusBar.innerText = "ONLINE";
             statusBar.className = "status-bar online";
@@ -344,12 +344,12 @@
         }
 
         function onFailure(response) {
-            logKeConsole("❌ Gagal terhubung: " + response.errorMessage);
+            logKeConsole("❌ Gagal jabat tangan MQTT: " + response.errorMessage);
             setTimeout(hubungkanMqtt, 5000);
         }
 
         function onConnectionLost(responseObject) {
-            logKeConsole("⚠️ Koneksi putus: " + responseObject.errorMessage);
+            logKeConsole("⚠️ Jaringan MQTT Terputus: " + responseObject.errorMessage);
             const statusBar = document.getElementById("statusMqtt");
             statusBar.innerText = "DISCONNECTED";
             statusBar.className = "status-bar";
@@ -398,7 +398,7 @@
             kirimPerintah("stop,50");
         }
 
-        // --- FIX LOGIKA JOYSTICK: LURUS, RINGAN, DAN ANTI-LOMPAT ---
+        // --- SISTEM ENGINE JOYSTICK REKAYASA KEMUDI RINGAN ---
         const joyZone = document.getElementById('joyZone');
         const joyHandle = document.getElementById('joyHandle');
         let currentSteerDirection = "straight";
@@ -406,18 +406,14 @@
 
         function handleSteeringMove(clientX) {
             const rect = joyZone.getBoundingClientRect();
-            // Menghitung titik tengah zona berpatokan pada koordinat view aktual browser
             const centerX = rect.left + rect.width / 2;
             
             let deltaX = clientX - centerX;
-            // Batas maksimum pergerakan horizontal bulatan handle (maksimal deviasi 55px)
             if (deltaX < -55) deltaX = -55;
             if (deltaX > 55) deltaX = 55;
 
-            // Transformasi posisi koordinat lokal ke CSS left handle
             joyHandle.style.left = (deltaX + 55) + 'px';
 
-            // Menentukan ambang batas daerah kemudi kiri/kanan
             let arah = "straight";
             if (deltaX < -20) arah = "left";
             else if (deltaX > 20) arah = "right";
@@ -444,7 +440,7 @@
             }
         }
 
-        // Penanganan Event Mouse Desktop
+        // Trigger Event Mouse Desktop
         joyZone.addEventListener('mousedown', (e) => {
             isDragging = true;
             joyHandle.style.transition = "none";
@@ -455,7 +451,7 @@
         });
         window.addEventListener('mouseup', resetJoystickPosition);
 
-        // Penanganan Event Sentuhan Layar HP
+        // Trigger Event Touchscreen HP
         joyZone.addEventListener('touchstart', (e) => {
             isDragging = true;
             joyHandle.style.transition = "none";
@@ -463,7 +459,7 @@
         });
         joyZone.addEventListener('touchmove', (e) => {
             if (isDragging) {
-                e.preventDefault(); // Mencegah layar utama ikut ter-scroll saat jempol bergerak
+                e.preventDefault(); 
                 handleSteeringMove(e.touches[0].clientX);
             }
         });
@@ -472,13 +468,6 @@
         function forceReconnectVideo() {
             document.getElementById('camFrame').src = LINK_VIDEO_STATIS + "?t=" + Date.now();
             logKeConsole("🔄 Menyegarkan jalur video feed...");
-        }
-
-        function logKeConsole(pesan) {
-            const consoleBox = document.getElementById("consoleLog");
-            const waktu = new Date().toLocaleTimeString();
-            consoleBox.innerHTML += `[${waktu}] ${pesan}<br>`;
-            consoleBox.scrollTop = consoleBox.scrollHeight;
         }
 
         window.onload = () => { hubungkanMqtt(); };
