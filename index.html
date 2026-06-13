@@ -9,61 +9,66 @@
         * { box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #1a1a22; color: #fff; margin: 0; padding: 10px;
+            background-color: #f4f5f7; color: #333; margin: 0; padding: 10px;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             min-height: 100vh; overflow: hidden; user-select: none; -webkit-user-select: none;
-            touch-action: none; /* Mencegah layar HP membal / scroll otomatis saat main joystick */
+            touch-action: none; 
         }
         .container {
-            width: 100%; max-width: 420px; background: #252533; padding: 12px;
-            border-radius: 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.6); text-align: center;
+            width: 100%; max-width: 420px; background: #ffffff; padding: 12px;
+            border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); text-align: center;
+            border: 1px solid #e1e4e8;
         }
-        h2 { color: #4cc9f0; margin: 0 0 2px 0; font-size: 18px; }
+        h2 { color: #ff6b00; margin: 0 0 2px 0; font-size: 18px; font-weight: 800; }
         .status {
             display: inline-block; padding: 4px 12px; border-radius: 15px;
-            font-weight: bold; font-size: 11px; background-color: #f72585; margin-bottom: 8px; transition: 0.3s;
+            font-weight: bold; font-size: 11px; background-color: #d9383a; color: #fff; margin-bottom: 8px; transition: 0.3s;
         }
-        .connected { background-color: #4cc9f0; color: #1a1a22; }
+        .connected { background-color: #2ed573; color: #fff; }
         
-        /* --- Video Stream Box (Skala Pas untuk Layar HP) --- */
+        /* --- Video Stream Box (Tema Putih-Oranye) --- */
         .video-container {
             width: 100%; height: 200px; background-color: #000; border-radius: 12px;
-            margin-bottom: 10px; overflow: hidden; position: relative; border: 2px solid #3f3f5a;
+            margin-bottom: 8px; overflow: hidden; position: relative; border: 2px solid #ff6b00;
         }
         .video-overlay {
             position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.6);
             padding: 3px 6px; border-radius: 4px; font-size: 10px; font-family: monospace;
-            color: #4cc9f0; pointer-events: none; z-index: 10;
+            color: #ff9f43; pointer-events: none; z-index: 10;
         }
         .video-container iframe {
             width: 100%; height: 100%; border: none; background: #000;
         }
 
-        .data-display {
-            display: flex; justify-content: space-around; background: #1e1e28;
-            padding: 8px; border-radius: 10px; margin-bottom: 10px; font-family: monospace; font-size: 12px;
+        /* Tombol Reconnect Terintegrasi Warna Oranye */
+        .refresh-video-btn {
+            width: 100%; background: #fff5ed; color: #ff6b00; border: 1px solid #ffbb80;
+            padding: 6px; border-radius: 8px; font-size: 11px; font-weight: bold;
+            cursor: pointer; margin-bottom: 10px; transition: 0.2s;
         }
-        .val { color: #4cc9f0; font-weight: bold; }
+        .refresh-video-btn:active { background: #ff6b00; color: white; border-color: #ff6b00; }
 
-        /* Tata letak Grid dioptimalkan untuk jempol tangan di HP */
+        .data-display {
+            display: flex; justify-content: space-around; background: #fdf1e7;
+            padding: 8px; border-radius: 10px; margin-bottom: 10px; font-family: monospace; font-size: 12px;
+            border: 1px solid #ffd8b3;
+        }
+        .val { color: #d35400; font-weight: bold; }
+
         .control-grid {
             display: flex; width: 100%; margin-bottom: 10px; align-items: center; justify-content: space-between;
         }
-        .col-slider {
-            width: 30%; text-align: center;
-        }
-        .col-joystick {
-            width: 65%; text-align: center;
-        }
+        .col-slider { width: 30%; text-align: center; }
+        .col-joystick { width: 65%; text-align: center; }
 
-        /* Bidirectional Slider */
+        /* Bidirectional Slider Kontras Tinggi */
         .slider-wrapper {
             height: 150px; width: 40px; display: inline-block; position: relative;
-            background: #1e1e28; border-radius: 20px; border: 2px solid #333; overflow: hidden;
+            background: #f0f2f5; border-radius: 20px; border: 2px solid #e1e4e8; overflow: hidden;
         }
         .slider-fill-track {
-            position: absolute; left: 0; width: 100%; background: #4cc9f0;
-            box-shadow: 0 0 10px rgba(76, 201, 240, 0.6);
+            position: absolute; left: 0; width: 100%; background: #ff6b00;
+            box-shadow: 0 0 8px rgba(255, 107, 0, 0.4);
         }
         .slider-vertical {
             position: absolute; top: 0; left: 0; width: 40px; height: 150px; margin: 0;
@@ -71,43 +76,44 @@
         }
         .slider-knob {
             position: absolute; left: 50%; width: 34px; height: 34px; background: #ffffff;
-            border: 4px solid #4361ee; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 4;
+            border: 4px solid #ff6b00; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 4;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
         }
+        .control-label { font-size: 10px; color: #666; margin-top: 4px; font-weight: bold; letter-spacing: 1px; }
 
-        .control-label {
-            font-size: 10px; color: #888; margin-top: 4px; font-weight: bold; letter-spacing: 1px;
-        }
-
+        /* Area Ring Joystick Kustom Oranye */
         #joystick-zone {
-            width: 150px; height: 150px; background: #1e1e28; margin: 0 auto;
-            border-radius: 50%; position: relative; border: 2px dashed #4361ee;
-            box-shadow: inset 0 0 15px rgba(0,0,0,0.6);
-            touch-action: none; /* Mengunci interaksi touch hanya untuk internal joystick */
+            width: 150px; height: 150px; background: #fdf1e7; margin: 0 auto;
+            border-radius: 50%; position: relative; border: 2px dashed #ffbb80;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.05); touch-action: none;
         }
         
         button.stop-btn {
             width: 100%; padding: 12px; font-size: 14px; font-weight: bold;
-            background-color: #f72585; color: white; border: none; border-radius: 10px;
-            cursor: pointer; box-shadow: 0 4px 10px rgba(247, 37, 133, 0.4);
+            background-color: #d9383a; color: white; border: none; border-radius: 10px;
+            cursor: pointer; box-shadow: 0 4px 12px rgba(217, 56, 58, 0.3);
         }
+        button.stop-btn:active { background-color: #b32b2d; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>GCS UTAMA - KAPAL USV</h2>
-    <p style="margin: 0 0 6px 0; color:#888; font-size: 11px;">Mobile-Optimized & Touch Response Enabled</p>
+    <p style="margin: 0 0 6px 0; color:#666; font-size: 11px;">Waduk Sinyal-Stabilized & High Visibility</p>
     
     <div id="statusLabel" class="status">MENGHUBUNGKAN MQTT...</div>
     
     <div class="video-container">
-        <iframe src="https://tugasakhiradit.loca.lt/cam/" allow="autoplay; fullscreen"></iframe>
-        <div class="video-overlay">🔴 LIVE WEBRTC CAM (LOCALTUNNEL)</div>
+        <iframe id="camFrame" src="https://tugasakhiradit.loca.lt/cam/" allow="autoplay; fullscreen"></iframe>
+        <div class="video-overlay" id="videoStatus">🔴 LIVE WEBRTC CAM</div>
     </div>
+
+    <button class="refresh-video-btn" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO (MANUAL)</button>
 
     <div class="data-display">
         <div>KEMUDI: <span id="txtArah" class="val">straight</span></div>
-        <div>THROTTLE: <span id="txtSpeed" class="val">0</span>% (<span id="txtStatusMotor" style="color: #ffb703;">DIAM</span>)</div>
+        <div>THROTTLE: <span id="txtSpeed" class="val">0</span>% (<span id="txtStatusMotor" style="color: #d35400;">DIAM</span>)</div>
     </div>
 
     <div class="control-grid">
@@ -140,17 +146,35 @@
     const clientId = "web_gcs_" + Math.random().toString(16).substr(2, 8);
     const client = new Paho.MQTT.Client(BROKER_HOST, Number(BROKER_PORT), clientId);
 
+    function forceReconnectVideo() {
+        const iframe = document.getElementById('camFrame');
+        const overlay = document.getElementById('videoStatus');
+        overlay.innerText = "🔄 RESETTING TEROWONGAN VIDEO...";
+        overlay.style.color = "#d35400";
+        
+        iframe.src = "https://tugasakhiradit.loca.lt/cam/?t=" + new Date().getTime();
+        
+        setTimeout(() => {
+            overlay.innerText = "🔴 LIVE WEBRTC CAM";
+            overlay.style.color = "#ff9f43";
+        }, 1500);
+    }
+
+    window.addEventListener('online', () => {
+        forceReconnectVideo();
+    });
+
     client.onConnectionLost = (responseObject) => { 
         statusLabel.innerText = "KONEKSI TERPUTUS"; 
         statusLabel.className = "status"; 
-        statusLabel.style.backgroundColor = "#f72585";
+        statusLabel.style.backgroundColor = "#d9383a";
         setTimeout(eksekusiKoneksiMQTT, 3000);
     };
 
     function eksekusiKoneksiMQTT() {
         statusLabel.innerText = "MENGHUBUNGKAN MQTT...";
         statusLabel.className = "status";
-        statusLabel.style.backgroundColor = "#f72585";
+        statusLabel.style.backgroundColor = "#d9383a";
         
         client.connect({
             useSSL: true,
@@ -162,7 +186,7 @@
             onFailure: (error) => { 
                 statusLabel.innerText = "KONEKSI GAGAL"; 
                 statusLabel.className = "status"; 
-                statusLabel.style.backgroundColor = "#f72585";
+                statusLabel.style.backgroundColor = "#d9383a";
                 setTimeout(eksekusiKoneksiMQTT, 5000);
             }
         });
@@ -212,17 +236,16 @@
         picuLoopPengiriman();
     }
 
-    // --- ENGINE JOYSTICK HYBRID (MOUSE + TOUCHSCREEN SUPPORT) ---
     var nipplejs = {
         create: function (options) {
             var zone = options.zone; 
             var box = document.createElement("div");
             box.style.position = "absolute"; box.style.width = "100px"; box.style.height = "100px"; box.style.left = "50%"; box.style.top = "50%"; box.style.transform = "translate(-50%, -50%)";
-            box.style.borderRadius = "50%"; box.style.background = "rgba(67, 97, 238, 0.2)"; box.style.border = "2px solid #4361ee";
+            box.style.borderRadius = "50%"; box.style.background = "rgba(255, 107, 0, 0.1)"; box.style.border = "2px solid #ff6b00";
             
             var nipple = document.createElement("div");
             nipple.style.width = "40px"; nipple.style.height = "40px"; nipple.style.position = "absolute"; nipple.style.left = "28px"; nipple.style.top = "28px"; nipple.style.borderRadius = "50%";
-            nipple.style.background = "#4361ee"; nipple.style.boxShadow = "0 4px 10px rgba(0,0,0,0.5)";
+            nipple.style.background = "#ff6b00"; nipple.style.boxShadow = "0 4px 10px rgba(255,107,0,0.3)";
             
             box.appendChild(nipple); 
             zone.appendChild(box); 
@@ -232,8 +255,6 @@
 
             var moveHandler = function (e) {
                 if (!isDragging) return; 
-                
-                // Cek apakah input dari HP touch atau Mouse laptop
                 var touch = e.touches ? e.touches[0] : e;
                 var rect = box.getBoundingClientRect();
                 var deltaX = touch.clientX - (rect.left + 50);
@@ -257,12 +278,10 @@
                 if (callbacks["end"]) callbacks["end"]();
             };
 
-            // Event Listener untuk Laptop (Mouse)
             zone.addEventListener("mousedown", function (e) { isDragging = true; moveHandler(e); });
             document.addEventListener("mousemove", moveHandler);
             document.addEventListener("mouseup", endHandler);
 
-            // EVENT LISTENER KHUSUS HP (TOUCHSCREEN BYPASS)
             zone.addEventListener("touchstart", function (e) { isDragging = true; moveHandler(e); }, { passive: true });
             document.addEventListener("touchmove", moveHandler, { passive: false });
             document.addEventListener("touchend", endHandler);
