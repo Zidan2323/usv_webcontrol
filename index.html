@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GCS TUGAS AKHIR</title>
+    <title>GCS Aterkia USV - Zidan</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
     <style>
         * {
@@ -111,7 +111,7 @@
             text-align: center;
         }
 
-        /* Widget Sensor MPU */
+        /* Widget MPU-6050 Display */
         .widget-grid {
             display: flex;
             gap: 10px;
@@ -145,9 +145,7 @@
             color: #4791ff;
         }
 
-        /* ==============================================================================
-        🕹️ UI KONTROL MANUAL LAMALU (THROTTLE, JOYSTICK, EMERGENCY)
-        ============================================================================== */
+        /* UI Kontrol Aktuator Manual */
         .control-container {
             display: flex;
             justify-content: space-around;
@@ -175,7 +173,7 @@
             border-radius: 30px;
             border: 2px solid #3f4752;
             outline: none;
-            writing-mode: bt-lr; /* Support vertical slider di beberapa browser */
+            writing-mode: bt-lr; 
             -webkit-writing-mode: vertical-lr;
             direction: rtl;
         }
@@ -183,7 +181,7 @@
         .throttle-slider::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 50px;
+            width: 54px;
             height: 30px;
             border-radius: 15px;
             background: #ff7b00;
@@ -202,6 +200,8 @@
             justify-content: center;
             align-items: center;
             box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+            user-select: none;
+            touch-action: none;
         }
 
         .joystick-handle {
@@ -212,7 +212,8 @@
             position: absolute;
             cursor: pointer;
             box-shadow: 0 4px 8px rgba(0,0,0,0.6);
-            transition: top 0.1s, left 0.1s;
+            user-select: none;
+            touch-action: none;
         }
 
         .btn-emergency {
@@ -289,14 +290,14 @@
             <div class="control-container">
                 <div class="throttle-box">
                     <span style="font-size: 11px; font-weight: bold; color: #ff7b00;">THROTTLE</span>
-                    <input type="range" min="0" max="100" value="0" class="throttle-slider" id="throttleInput" oninput="kirimThrottle(this.value)">
-                    <span id="valThrottle" style="font-size: 12px; font-weight: bold;">0%</span>
+                    <input type="range" min="0" max="100" value="50" class="throttle-slider" id="throttleInput" oninput="kirimThrottle(this.value)">
+                    <span id="valThrottle" style="font-size: 12px; font-weight: bold; color: #00ff66;">Netral (50%)</span>
                 </div>
 
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
                     <span style="font-size: 11px; font-weight: bold; color: #ff7b00;">STEERING CONTROL</span>
                     <div class="joystick-zone" id="joyZone">
-                        <div class="joystick-handle" id="joyHandle" style="top: 55px; left: 55px;"></div>
+                        <div class="joystick-handle" id="joyHandle" style="top: 55px; left: 55px; transition: none;"></div>
                     </div>
                     <span id="valSteer" style="font-size: 11px; font-weight: bold; color: #8cb4f9;">Kemudi: straight</span>
                 </div>
@@ -310,7 +311,7 @@
     </div>
 
     <script type="text/javascript">
-        // --- CONFIG MQTT NETWORK ---
+        // --- DATA JARINGAN NETWORK MQTT ---
         const BROKER = "broker.emqx.io";
         const PORT = 8083; 
         const CLIENT_ID = "gcs_zidan_" + Math.random().toString(16).substr(2, 8);
@@ -364,7 +365,6 @@
             }
         }
 
-        // --- FUNGSI TRANSPORTER PERINTAH MQTT KONTROL KELUAR ---
         function kirimPerintah(stringPerintah) {
             if (client && client.isConnected()) {
                 const message = new Paho.MQTT.Message(stringPerintah);
@@ -373,55 +373,48 @@
             }
         }
 
+        // --- SISTEM TRANSMISI THROTTLE CENTER-ZERO ---
         function kirimThrottle(val) {
-            document.getElementById("valThrottle").innerText = val + "%";
+            let statusTeks = "";
+            if (val == 50) {
+                statusTeks = "Netral (50%)";
+            } else if (val > 50) {
+                statusTeks = "Maju: " + (val - 50) * 2 + "%";
+            } else {
+                statusTeks = "Mundur: " + (50 - val) * 2 + "%";
+            }
+            document.getElementById("valThrottle").innerText = statusTeks;
+            
             const posisiSteer = currentSteerDirection || "straight";
             kirimPerintah(`${posisiSteer},${val}`);
         }
 
         function kirimEmergencyStop() {
-            logKeConsole("🚨 PERINTAH EMERGENCY STOP DISBURKAN!");
-            document.getElementById("throttleInput").value = 0;
-            document.getElementById("valThrottle").innerText = "0%";
-            kirimPerintah("stop,0");
+            logKeConsole("🚨 EMERGENCY STOP! THROTTLE NETRAL (50%)");
+            document.getElementById("throttleInput").value = 50;
+            document.getElementById("valThrottle").innerText = "Netral (50%)";
+            kirimPerintah("stop,50");
         }
 
-        // --- LOGIKA JOYSTICK MANUAL ---
+        // --- SISTEM ENGINE JOYSTICK REKAYASA KEMUDI RINGAN ---
         const joyZone = document.getElementById('joyZone');
         const joyHandle = document.getElementById('joyHandle');
         let currentSteerDirection = "straight";
+        let isDragging = false;
 
-        joyZone.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            prosesGerakanJoystick(touch.clientX, touch.clientY);
-        });
-
-        joyZone.addEventListener('mousemove', (e) => {
-            if(e.buttons === 1) {
-                prosesGerakanJoystick(e.clientX, e.clientY);
-            }
-        });
-
-        joyZone.addEventListener('touchend', resetJoystickPosition);
-        joyZone.addEventListener('mouseup', resetJoystickPosition);
-        joyZone.addEventListener('mouseleave', resetJoystickPosition);
-
-        function prosesGerakanJoystick(clientX, clientY) {
+        function handleSteeringMove(clientX) {
             const rect = joyZone.getBoundingClientRect();
             const centerX = rect.left + rect.width / 2;
-            const x = clientX - centerX;
             
-            // Batasi gerakan horizontal handle
-            let handleX = x + 55;
-            if (handleX < 10) handleX = 10;
-            if (handleX > 100) handleX = 100;
-            
-            joyHandle.style.left = handleX + 'px';
+            let deltaX = clientX - centerX;
+            if (deltaX < -55) deltaX = -55;
+            if (deltaX > 55) deltaX = 55;
+
+            joyHandle.style.left = (deltaX + 55) + 'px';
 
             let arah = "straight";
-            if (x < -25) arah = "left";
-            else if (x > 25) arah = "right";
+            if (deltaX < -20) arah = "left";
+            else if (deltaX > 20) arah = "right";
 
             if (currentSteerDirection !== arah) {
                 currentSteerDirection = arah;
@@ -432,7 +425,10 @@
         }
 
         function resetJoystickPosition() {
+            isDragging = false;
+            joyHandle.style.transition = "left 0.2s ease-out"; 
             joyHandle.style.left = '55px';
+            
             if (currentSteerDirection !== "straight") {
                 currentSteerDirection = "straight";
                 document.getElementById("valSteer").innerText = "Kemudi: straight";
@@ -440,6 +436,31 @@
                 kirimPerintah(`straight,${currentThrottle}`);
             }
         }
+
+        // Trigger Event Mouse Desktop
+        joyZone.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            joyHandle.style.transition = "none";
+            handleSteeringMove(e.clientX);
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (isDragging) handleSteeringMove(e.clientX);
+        });
+        window.addEventListener('mouseup', resetJoystickPosition);
+
+        // Trigger Event Touchscreen HP
+        joyZone.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            joyHandle.style.transition = "none";
+            handleSteeringMove(e.touches[0].clientX);
+        });
+        joyZone.addEventListener('touchmove', (e) => {
+            if (isDragging) {
+                e.preventDefault();
+                handleSteeringMove(e.touches[0].clientX);
+            }
+        });
+        joyZone.addEventListener('touchend', resetJoystickPosition);
 
         function forceReconnectVideo() {
             document.getElementById('camFrame').src = LINK_VIDEO_STATIS + "?t=" + Date.now();
