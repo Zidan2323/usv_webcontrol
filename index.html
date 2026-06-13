@@ -3,269 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GCS Aterkia USV - Zidan</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
+    <title>GCS Aterkia USV - Global Access</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background-color: #1a1c1e;
-            color: #e3e2e6;
-            padding: 15px;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #334455;
-        }
-
-        header h1 {
-            font-size: 22px;
-            color: #4791ff;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        .status-bar {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 11px;
-            margin-top: 5px;
-            background-color: #ba1a1a;
-            color: white;
-        }
-
-        .online {
-            background-color: #006a4e;
-        }
-
-        .main-container {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        @media(min-width: 768px) {
-            .main-container {
-                flex-direction: row;
-            }
-        }
-
-        .panel {
-            flex: 1;
-            background-color: #24262a;
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-
-        .panel-title {
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 12px;
-            color: #8cb4f9;
-            border-left: 4px solid #4791ff;
-            padding-left: 8px;
-        }
-
-        .video-wrapper {
-            position: relative;
-            width: 100%;
-            padding-bottom: 75%; 
-            background-color: #000;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid #3f4752;
-        }
-
-        .video-wrapper iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        .btn-reconnect {
-            display: block;
-            width: 100%;
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #334455;
-            color: #ffffff;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 13px;
-            text-align: center;
-        }
-
-        /* Widget MPU-6050 Display */
-        .widget-grid {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .widget-card {
-            flex: 1;
-            background-color: #1a1c1e;
-            border: 1px solid #3f4752;
-            border-radius: 8px;
-            padding: 12px;
-            text-align: center;
-        }
-
-        .widget-label {
-            font-size: 10px;
-            text-transform: uppercase;
-            color: #939099;
-            margin-bottom: 3px;
-        }
-
-        .widget-value {
-            font-size: 20px;
-            font-weight: bold;
-            color: #ffffff;
-        }
-
-        .unit {
-            font-size: 11px;
-            color: #4791ff;
-        }
-
-        /* UI Kontrol Aktuator Manual */
-        .control-container {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            background-color: #1a1c1e;
-            border: 1px solid #3f4752;
-            border-radius: 8px;
-            padding: 20px 10px;
-            margin-top: 15px;
-        }
-
-        .throttle-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .throttle-slider {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 60px;
-            height: 150px;
-            background: #24262a;
-            border-radius: 30px;
-            border: 2px solid #3f4752;
-            outline: none;
-            writing-mode: bt-lr; 
-            -webkit-writing-mode: vertical-lr;
-            direction: rtl;
-        }
-
-        .throttle-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 54px;
-            height: 30px;
-            border-radius: 15px;
-            background: #ff7b00;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-        }
-
-        .joystick-zone {
-            width: 160px;
-            height: 160px;
-            background: radial-gradient(circle, #24262a 40%, #1a1c1e 100%);
-            border: 2px dashed #ff7b00;
-            border-radius: 50%;
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
-            user-select: none;
-            touch-action: none;
-        }
-
-        .joystick-handle {
-            width: 50px;
-            height: 50px;
-            background: radial-gradient(circle, #ff9d00 0%, #d45d00 100%);
-            border-radius: 50%;
-            position: absolute;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.6);
-            user-select: none;
-            touch-action: none;
-        }
-
-        .btn-emergency {
-            display: block;
-            width: 100%;
-            margin-top: 15px;
-            padding: 15px;
-            background-color: #ba1a1a;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
-        }
-
-        .btn-emergency:hover {
-            background-color: #ff1744;
-        }
-
-        .log-panel {
-            margin-top: 15px;
-            background-color: #1a1c1e;
-            border: 1px solid #3f4752;
-            border-radius: 8px;
-            padding: 10px;
-            height: 90px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 11px;
-            color: #00ff66;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #1a1c1e; color: #e3e2e6; padding: 15px; }
+        header { text-align: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #334455; }
+        header h1 { font-size: 20px; color: #4791ff; text-transform: uppercase; letter-spacing: 2px; }
+        .status-bar { display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 11px; margin-top: 5px; background-color: #ba1a1a; color: white; }
+        .online { background-color: #006a4e; }
+        .main-container { display: flex; flex-direction: column; gap: 15px; }
+        @media(min-width: 768px) { .main-container { flex-direction: row; } }
+        .panel { flex: 1; background-color: #24262a; border-radius: 12px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .panel-title { font-size: 13px; font-weight: bold; margin-bottom: 12px; color: #8cb4f9; border-left: 4px solid #4791ff; padding-left: 8px; }
+        .video-wrapper { position: relative; width: 100%; padding-bottom: 75%; background-color: #000; border-radius: 8px; overflow: hidden; border: 1px solid #3f4752; }
+        .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+        .widget-grid { display: flex; gap: 10px; margin-bottom: 15px; }
+        .widget-card { flex: 1; background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 12px; text-align: center; }
+        .widget-label { font-size: 10px; text-transform: uppercase; color: #939099; }
+        .widget-value { font-size: 20px; font-weight: bold; color: #ffffff; }
+        .unit { font-size: 11px; color: #4791ff; }
+        .log-panel { margin-top: 15px; background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 10px; height: 100px; overflow-y: auto; font-family: monospace; font-size: 11px; color: #00ff66; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>Aterkia USV - Ground Control Station</h1>
+        <h1>Aterkia USV - Global GCS</h1>
         <div id="statusMqtt" class="status-bar">DISCONNECTED</div>
     </header>
 
     <div class="main-container">
-        
         <div class="panel">
-            <div class="panel-title">LIVE CAMERA MONITOR (LOCALTONET STATIS)</div>
+            <div class="panel-title">LIVE VIDEO MONITOR (GLOBAL ACCESS)</div>
             <div class="video-wrapper">
-                <iframe id="camFrame" src="https://3bovjczenb.localto.net"></iframe>
+                <iframe id="camFrame" src="https://aterkia-stream.trycloudflare.com/video_feed"></iframe>
             </div>
-            <button class="btn-reconnect" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO STREAM</button>
         </div>
 
         <div class="panel">
@@ -284,193 +57,50 @@
                     <div class="widget-value"><span id="txtYawRate">0.0</span><span class="unit">°/s</span></div>
                 </div>
             </div>
-
-            <div class="panel-title" style="margin-top: 15px;">MANUAL ACTUATOR CONTROL</div>
-            
-            <div class="control-container">
-                <div class="throttle-box">
-                    <span style="font-size: 11px; font-weight: bold; color: #ff7b00;">THROTTLE</span>
-                    <input type="range" min="0" max="100" value="50" class="throttle-slider" id="throttleInput" oninput="kirimThrottle(this.value)">
-                    <span id="valThrottle" style="font-size: 12px; font-weight: bold; color: #00ff66;">Netral (50%)</span>
-                </div>
-
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                    <span style="font-size: 11px; font-weight: bold; color: #ff7b00;">STEERING CONTROL</span>
-                    <div class="joystick-zone" id="joyZone">
-                        <div class="joystick-handle" id="joyHandle" style="top: 55px; left: 55px;"></div>
-                    </div>
-                    <span id="valSteer" style="font-size: 11px; font-weight: bold; color: #8cb4f9;">Kemudi: straight</span>
-                </div>
-            </div>
-
-            <button class="btn-emergency" onclick="kirimEmergencyStop()">🚨 EMERGENCY STOP</button>
-
-            <div id="consoleLog" class="log-panel">Menunggu koneksi dari kapal USV...<br></div>
+            <div id="consoleLog" class="log-panel">Menghubungkan ke EMQX Broker Aman...<br></div>
         </div>
-
     </div>
 
-    <script type="text/javascript">
-        // --- CONFIG NETWORK DATA ---
-        const BROKER = "broker.emqx.io";
-        const PORT = 8083; // Port WebSockets aman untuk HTTPS Vercel
-        const CLIENT_ID = "gcs_zidan_" + Math.random().toString(16).substr(2, 8);
-        const TOPIC_CONTROL = "undip/aterkia/zidan/control";
+    <script>
+        const logBox = document.getElementById("consoleLog");
+        function log(msg) { logBox.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`; logBox.scrollTop = logBox.scrollHeight; }
+
+        // MENGGUNAKAN WEBSOCKET SECURE (WSS) JALUR RESMI PORT 8084 EMQX
+        const BROKER_URL = "wss://broker.emqx.io:8084/mqtt";
         const TOPIC_TELEMETRY = "undip/aterkia/zidan/telemetry";
-        
-        // REVISI SAKTI: Menyesuaikan alamat publik dasar murni
-        const LINK_VIDEO_STATIS = "https://3bovjczenb.localto.net";
 
-        const client = new Paho.MQTT.Client(BROKER, PORT, CLIENT_ID);
-        client.onConnectionLost = onConnectionLost;
-        client.onMessageArrived = onMessageArrived;
+        log("Menghubungkan ke broker beralur SSL aman...");
+        const client = mqtt.connect(BROKER_URL, {
+            clientId: "gcs_global_" + Math.random().toString(16).substr(2, 8),
+            clean: true,
+            connectTimeout: 4000
+        });
 
-        function hubungkanMqtt() {
-            logKeConsole("Mengetuk broker EMQX via WSS Port 8083: " + BROKER);
-            client.connect({
-                onSuccess: onConnect,
-                onFailure: onFailure,
-                keepAliveInterval: 30,
-                useSSL: true // REVISI SAKTI: Wajib TRUE agar tidak ditolak enkripsi https Vercel
-            });
-        }
-
-        function onConnect() {
-            logKeConsole("✅ Komunikasi GCS Online Berhasil!");
-            const statusBar = document.getElementById("statusMqtt");
-            statusBar.innerText = "ONLINE";
-            statusBar.className = "status-bar online";
+        client.on('connect', () => {
+            log("✅ KONEKSI TELEMETRI GLOBAL AKTIF!");
+            const sb = document.getElementById("statusMqtt");
+            sb.innerText = "ONLINE";
+            sb.className = "status-bar online";
             client.subscribe(TOPIC_TELEMETRY);
-        }
+        });
 
-        function onFailure(response) {
-            logKeConsole("❌ Gagal jabat tangan MQTT: " + response.errorMessage);
-            setTimeout(hubungkanMqtt, 5000);
-        }
-
-        function onConnectionLost(responseObject) {
-            logKeConsole("⚠️ Jaringan MQTT Terputus: " + responseObject.errorMessage);
-            const statusBar = document.getElementById("statusMqtt");
-            statusBar.innerText = "DISCONNECTED";
-            statusBar.className = "status-bar";
-            setTimeout(hubungkanMqtt, 5000);
-        }
-
-        function onMessageArrived(msg) {
-            if (msg.destinationName === TOPIC_TELEMETRY) {
-                const parts = msg.payloadString.split(",");
+        client.on('message', (topic, payload) => {
+            if (topic === TOPIC_TELEMETRY) {
+                const parts = payload.toString().split(",");
                 if (parts.length === 3) {
                     document.getElementById("txtRoll").innerText = parseFloat(parts[0]).toFixed(1);
                     document.getElementById("txtPitch").innerText = parseFloat(parts[1]).toFixed(1);
                     document.getElementById("txtYawRate").innerText = parseFloat(parts[2]).toFixed(1);
                 }
             }
-        }
-
-        function kirimPerintah(stringPerintah) {
-            if (client && client.isConnected()) {
-                const message = new Paho.MQTT.Message(stringPerintah);
-                message.destinationName = TOPIC_CONTROL;
-                client.send(message);
-            }
-        }
-
-        // --- SISTEM TRANSMISI THROTTLE CENTER-ZERO ---
-        function kirimThrottle(val) {
-            let statusTeks = "";
-            if (val == 50) {
-                statusTeks = "Netral (50%)";
-            } else if (val > 50) {
-                statusTeks = "Maju: " + (val - 50) * 2 + "%";
-            } else {
-                statusTeks = "Mundur: " + (50 - val) * 2 + "%";
-            }
-            document.getElementById("valThrottle").innerText = statusTeks;
-            
-            const posisiSteer = currentSteerDirection || "straight";
-            kirimPerintah(`${posisiSteer},${val}`);
-        }
-
-        function kirimEmergencyStop() {
-            logKeConsole("🚨 EMERGENCY STOP! THROTTLE NETRAL (50%)");
-            document.getElementById("throttleInput").value = 50;
-            document.getElementById("valThrottle").innerText = "Netral (50%)";
-            kirimPerintah("stop,50");
-        }
-
-        // --- SISTEM ENGINE JOYSTICK REKAYASA KEMUDI RINGAN ---
-        const joyZone = document.getElementById('joyZone');
-        const joyHandle = document.getElementById('joyHandle');
-        let currentSteerDirection = "straight";
-        let isDragging = false;
-
-        function handleSteeringMove(clientX) {
-            const rect = joyZone.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            
-            let deltaX = clientX - centerX;
-            if (deltaX < -55) deltaX = -55;
-            if (deltaX > 55) deltaX = 55;
-
-            joyHandle.style.left = (deltaX + 55) + 'px';
-
-            let arah = "straight";
-            if (deltaX < -20) arah = "left";
-            else if (deltaX > 20) arah = "right";
-
-            if (currentSteerDirection !== arah) {
-                currentSteerDirection = arah;
-                document.getElementById("valSteer").innerText = "Kemudi: " + arah;
-                const currentThrottle = document.getElementById("throttleInput").value;
-                kirimPerintah(`${arah},${currentThrottle}`);
-            }
-        }
-
-        function resetJoystickPosition() {
-            if (!isDragging) return;
-            isDragging = false;
-            joyHandle.style.transition = "left 0.2s ease-out"; 
-            joyHandle.style.left = '55px';
-            
-            if (currentSteerDirection !== "straight") {
-                currentSteerDirection = "straight";
-                document.getElementById("valSteer").innerText = "Kemudi: straight";
-                const currentThrottle = document.getElementById("throttleInput").value;
-                kirimPerintah(`straight,${currentThrottle}`);
-            }
-        }
-
-        // Trigger Event Mouse Desktop
-        joyZone.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            joyHandle.style.transition = "none";
-            handleSteeringMove(e.clientX);
         });
-        window.addEventListener('mousemove', (e) => {
-            if (isDragging) handleSteeringMove(e.clientX);
-        });
-        window.addEventListener('mouseup', resetJoystickPosition);
 
-        // Trigger Event Touchscreen HP
-        joyZone.addEventListener('touchstart', (e) => {
-            isDragging = true;
-            joyHandle.style.transition = "none";
-            handleSteeringMove(e.touches[0].clientX);
+        client.on('error', (err) => { log("❌ Eror Jaringan: " + err); });
+        client.on('close', () => { 
+            const sb = document.getElementById("statusMqtt");
+            sb.innerText = "DISCONNECTED";
+            sb.className = "status-bar";
         });
-        joyZone.addEventListener('touchmove', (e) => {
-            if (isDragging) {
-                e.preventDefault(); 
-                handleSteeringMove(e.touches[0].clientX);
-            }
-        });
-        joyZone.addEventListener('touchend', resetJoystickPosition);
-
-        function forceReconnectVideo() {
-            document.getElementById('camFrame').src = LINK_VIDEO_STATIS + "?t=" + Date.now();
-            logKeConsole("🔄 Menyegarkan jalur video feed...");
-        }
-
-        window.onload = () => { hubungkanMqtt(); };
     </script>
 </body>
 </html>
