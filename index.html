@@ -59,7 +59,7 @@
         .controls-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .col-throttle { width: 35%; display: flex; flex-direction: column; align-items: center; }
         
-        /* REVISI VISUAL: Jalur Pengisian Bidirectional murni dari tengah */
+        /* Jalur Pengisian Bidirectional murni dari tengah */
         .slider-wrap {
             height: 130px; width: 45px; background: #f0f2f5; border-radius: 15px; border: 2px solid #e1e4e8;
             position: relative; overflow: hidden; cursor: pointer;
@@ -180,7 +180,7 @@
 
     function sendData() {
         if (client.isConnected()) {
-            const msg = new Paho.MQTT.Message(`${lastArah},${lastSpeed}`);
+            const msg = new Paho.MQTT.Message(lastArah + "," + lastSpeed);
             msg.destinationName = TOPIC_CTRL;
             client.send(msg);
         }
@@ -204,18 +204,14 @@
         persentase = Math.max(0, Math.min(100, persentase));
         lastSpeed = Math.round(persentase);
 
-        // Atur posisi tombol (knob)
-        sliderKnob.style.bottom = `calc(${persentase}% - 10px)`;
+        sliderKnob.style.bottom = "calc(" + persentase + "% - 10px)";
 
-        // REVISI LOGIKA JALUR WARNA: Hitung jarak regangan dari titik tengah (50%)
         if (persentase >= 50) {
-            // Jika digeser ke MAJU (atas)
             sliderFill.style.bottom = "50%";
-            sliderFill.style.height = `${persentase - 50}%`;
+            sliderFill.style.height = (persentase - 50) + "%";
         } else {
-            // Jika digeser ke MUNDUR (bawah)
-            sliderFill.style.bottom = `${persentase}%`;
-            sliderFill.style.height = `${50 - persentase}%`;
+            sliderFill.style.bottom = persentase + "%";
+            sliderFill.style.height = (50 - persentase) + "%";
         }
 
         let nilaiDisplay = Math.abs((lastSpeed - 50) * 2);
@@ -258,13 +254,18 @@
                 if(!isD) return;
                 const t = e.touches ? e.touches[0] : e, r = b.getBoundingClientRect();
                 let dx = t.clientX - (r.left + 35); dx = Math.max(-35, Math.min(35, dx));
-                n.style.transform = `translateX(${dx}px)`;
+                n.style.transform = "translateX(" + dx + "px)";
                 lastArah = dx < -10 ? "left" : dx > 10 ? "right" : "straight";
                 document.getElementById("txtArah").innerText = lastArah;
                 startSendingLoop();
             };
             
-            const end = () => { isD = false; n.style.transform = "translateX(0)"; lastArah = "straight"; document.getElementById("txtArah").innerText = "straight"; };
+            const end = () => { 
+                isD = false; 
+                n.style.transform = "translateX(0px)"; 
+                lastArah = "straight"; 
+                document.getElementById("txtArah").innerText = "straight"; 
+            };
             
             z.addEventListener("mousedown", () => isD = true);
             z.addEventListener("touchstart", () => isD = true, { passive: true });
@@ -284,7 +285,9 @@
         document.getElementById("txtArah").innerText = "straight";
         document.getElementById("txtSpeed").innerText = "0";
         if (client.isConnected()) {
-            client.send(new Paho.MQTT.Message("straight,50") {{ destinationName: TOPIC_CTRL }});
+            const msg = new Paho.MQTT.Message("straight,50");
+            msg.destinationName = TOPIC_CTRL;
+            client.send(msg);
         }
     }
 </script>
