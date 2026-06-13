@@ -3,129 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GCS Kapal USV</title>
+    <title>GCS USV AHRS SYSTEM</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
     <style>
         * { box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; color: #333; margin: 0; padding: 10px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden;
-            user-select: none; -webkit-user-select: none; touch-action: none; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh;
         }
         .container {
-            width: 100%; max-width: 420px; background: #ffffff; padding: 15px;
+            width: 100%; max-width: 420px; background: #fff; padding: 15px;
             border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; border: 1px solid #e1e4e8;
         }
-        h2 { color: #ff6b00; margin: 0 0 10px 0; font-size: 20px; font-weight: 800; }
+        h2 { color: #ff6b00; margin: 0 0 10px 0; font-size: 18px; font-weight: 800; }
         .status {
-            display: inline-block; padding: 5px 15px; border-radius: 20px;
-            font-weight: bold; font-size: 12px; background-color: #d9383a; color: #fff; margin-bottom: 12px;
+            display: inline-block; padding: 4px 12px; border-radius: 20px;
+            font-weight: bold; font-size: 11px; background-color: #d9383a; color: #fff; margin-bottom: 10px;
         }
-        .connected { background-color: #2ed573; color: #fff; }
-        
+        .connected { background-color: #2ed573; }
+
+        /* --- VISUAL AHRS (ARTIFICIAL HORIZON) --- */
+        .ahrs-container {
+            width: 100%; height: 160px; background: #333; border-radius: 15px;
+            margin-bottom: 12px; position: relative; overflow: hidden; border: 3px solid #ff6b00;
+        }
+        .ahrs-sky {
+            position: absolute; width: 200%; height: 400%; top: -150%; left: -50%;
+            background: linear-gradient(to bottom, #4cc9f0 50%, #8b4513 50%);
+            transition: transform 0.1s linear; /* Membuat pergerakan sangat halus */
+        }
+        .ahrs-overlay {
+            position: absolute; width: 100%; height: 100%; top: 0; left: 0;
+            display: flex; align-items: center; justify-content: center; pointer-events: none;
+        }
+        .ship-indicator {
+            width: 60%; height: 2px; background: #ff6b00; position: relative;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        .ship-indicator::after {
+            content: ''; position: absolute; width: 10px; height: 10px; 
+            border: 2px solid #ff6b00; border-radius: 50%; left: 50%; top: -5px; transform: translateX(-50%);
+        }
+        .ahrs-text {
+            position: absolute; bottom: 5px; width: 100%; display: flex; 
+            justify-content: space-around; color: white; font-family: monospace; font-size: 10px;
+            text-shadow: 1px 1px 2px black;
+        }
+
         /* Video */
         .video-container {
-            width: 100%; height: 210px; background-color: #000; border-radius: 12px;
-            margin-bottom: 10px; overflow: hidden; position: relative; border: 2px solid #ff6b00;
+            width: 100%; height: 160px; background-color: #000; border-radius: 12px;
+            margin-bottom: 10px; overflow: hidden; position: relative; border: 1px solid #ccc;
         }
-        .video-overlay {
-            position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.6);
-            padding: 4px 8px; border-radius: 5px; font-size: 11px; font-family: monospace; color: #ff9f43; z-index: 10;
-        }
-        .video-container iframe { width: 100%; height: 100%; border: none; background: #000; }
+        .video-container iframe { width: 100%; height: 100%; border: none; }
 
-        /* Tombol Reconnect */
-        .refresh-video-btn {
+        /* Buttons & Data */
+        .refresh-btn {
             width: 100%; background: #fff5ed; color: #ff6b00; border: 1px solid #ffbb80;
-            padding: 8px; border-radius: 10px; font-size: 12px; font-weight: bold;
-            cursor: pointer; margin-bottom: 12px; font-family: sans-serif;
+            padding: 8px; border-radius: 10px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 10px;
         }
-        .refresh-video-btn:active { background: #ff6b00; color: white; }
-
-        /* Data Displays */
-        .data-display {
+        .data-grid {
             display: flex; justify-content: space-around; background: #fdf1e7;
-            padding: 10px; border-radius: 10px; margin-bottom: 8px; font-family: monospace; font-size: 13px; border: 1px solid #ffd8b3;
+            padding: 8px; border-radius: 10px; margin-bottom: 12px; font-family: monospace; font-size: 11px;
         }
-        .telemetry-display {
-            display: flex; justify-content: space-around; background: #f4f5f7;
-            padding: 10px; border-radius: 10px; margin-bottom: 12px; font-family: monospace; font-size: 13px; border: 1px solid #e1e4e8;
-        }
-        .val { color: #d35400; font-weight: bold; }
-        .val-geo { color: #2b7de9; font-weight: bold; }
-
-        /* Kontrol */
-        .control-grid { display: flex; width: 100%; margin-bottom: 12px; align-items: center; justify-content: space-between; }
-        .col-slider { width: 30%; text-align: center; }
-        .col-joystick { width: 65%; text-align: center; }
-
-        .slider-wrapper {
-            height: 160px; width: 45px; display: inline-block; position: relative;
-            background: #f0f2f5; border-radius: 20px; border: 2px solid #e1e4e8; overflow: hidden;
-        }
-        .slider-fill-track { position: absolute; left: 0; width: 100%; background: #ff6b00; }
-        .slider-vertical {
-            position: absolute; top: 0; left: 0; width: 45px; height: 160px; margin: 0;
-            opacity: 0; cursor: pointer; writing-mode: bt-lr; appearance: slider-vertical; -webkit-appearance: slider-vertical; z-index: 3;
-        }
-        .slider-knob {
-            position: absolute; left: 50%; width: 38px; height: 38px; background: #ffffff;
-            border: 4px solid #ff6b00; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 4;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-        }
-        .control-label { font-size: 11px; color: #555; margin-top: 5px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-
-        #joystick-zone {
-            width: 160px; height: 160px; background: #fdf1e7; margin: 0 auto;
-            border-radius: 50%; position: relative; border: 2px dashed #ffbb80; touch-action: none;
-        }
+        .control-grid { display: flex; width: 100%; align-items: center; justify-content: space-between; margin-bottom: 15px; }
         
-        /* Emergency */
-        button.stop-btn {
-            width: 100%; padding: 15px; font-size: 16px; font-weight: bold; text-transform: uppercase;
-            background-color: #d9383a; color: white; border: none; border-radius: 12px;
-            cursor: pointer; box-shadow: 0 5px 15px rgba(217, 56, 58, 0.3);
+        /* Slider & Joystick */
+        .slider-wrapper {
+            height: 140px; width: 45px; background: #f0f2f5; border-radius: 20px; border: 2px solid #e1e4e8;
+            position: relative; overflow: hidden;
         }
-        button.stop-btn:active { background-color: #b32b2d; }
+        .slider-fill { position: absolute; width: 100%; background: #ff6b00; bottom: 0; }
+        .slider-vertical {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0;
+            cursor: pointer; appearance: slider-vertical; -webkit-appearance: slider-vertical;
+        }
+        #joystick-zone { width: 140px; height: 140px; background: #fdf1e7; border-radius: 50%; border: 2px dashed #ffbb80; position: relative; }
+        
+        .stop-btn {
+            width: 100%; padding: 15px; font-size: 16px; font-weight: bold; background: #d9383a;
+            color: white; border: none; border-radius: 12px; cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>GCS UTAMA - KAPAL USV</h2>
-    
-    <div id="statusLabel" class="status">KONEKSI...</div>
-    
+    <h2>GCS AHRS - USV SHIP</h2>
+    <div id="statusLabel" class="status">CONNECTING...</div>
+
+    <div class="ahrs-container">
+        <div class="ahrs-sky" id="ahrsVisual"></div>
+        <div class="ahrs-overlay">
+            <div class="ship-indicator"></div>
+        </div>
+        <div class="ahrs-text">
+            <span>R: <b id="valRoll">0.0</b>°</span>
+            <span>P: <b id="valPitch">0.0</b>°</span>
+        </div>
+    </div>
+
     <div class="video-container">
-        <iframe id="camFrame" src="about:blank" allow="autoplay; fullscreen"></iframe>
-        <div class="video-overlay">🔴 LIVE CAM</div>
+        <iframe id="camFrame" src="about:blank"></iframe>
     </div>
+    
+    <button class="refresh-btn" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO</button>
 
-    <button class="refresh-video-btn" onclick="forceReconnectVideo()">🔄 RECONNECT</button>
-
-    <div class="data-display">
-        <div>KEMUDI: <span id="txtArah" class="val">straight</span></div>
-        <div>THROTTLE: <span id="txtSpeed" class="val">0</span>% (<span id="txtStatusMotor" style="color: #d35400;">DIAM</span>)</div>
-    </div>
-
-    <div class="telemetry-display">
-        <div>ROLL: <span id="txtRoll" class="val-geo">0.0</span>°</div>
-        <div>PITCH: <span id="txtPitch" class="val-geo">0.0</span>°</div>
+    <div class="data-grid">
+        <div>KEMUDI: <b id="txtArah" style="color:#ff6b00">straight</b></div>
+        <div>SPEED: <b id="txtSpeed" style="color:#ff6b00">0</b>%</div>
     </div>
 
     <div class="control-grid">
-        <div class="col-slider">
+        <div style="width: 30%">
             <div class="slider-wrapper">
-                <div id="sliderFill" class="slider-fill-track"></div>
-                <div id="sliderKnob" class="slider-knob"></div>
-                <input type="range" id="throttleSlider" class="slider-vertical" min="0" max="100" value="50" oninput="updateSliderThrottle(this.value)">
+                <div class="slider-fill" id="sliderFill"></div>
+                <input type="range" class="slider-vertical" min="0" max="100" value="50" oninput="updateThrottle(this.value)">
             </div>
-            <div class="control-label">THROTTLE</div>
+            <div style="font-size:10px; font-weight:bold; margin-top:5px">THROTTLE</div>
         </div>
         
-        <div class="col-joystick">
+        <div style="width: 65%">
             <div id="joystick-zone"></div>
-            <div class="control-label">STEERING</div>
+            <div style="font-size:10px; font-weight:bold; margin-top:5px">STEERING</div>
         </div>
     </div>
 
@@ -133,143 +133,97 @@
 </div>
 
 <script>
-    const BROKER_HOST = "broker.emqx.io";
-    const BROKER_PORT = 8084; 
-    const TOPIC_CONTROL = "undip/aterkia/zidan/control";
-    const TOPIC_TELEMETRY = "undip/aterkia/zidan/telemetry"; // Jalur tangkap data MPU
+    const BROKER = "broker.emqx.io";
+    const PORT = 8084;
+    const TOPIC_CTRL = "undip/aterkia/zidan/control";
+    const TOPIC_TELE = "undip/aterkia/zidan/telemetry";
 
-    let lastArah = "straight"; let lastSpeed = 50; let sendInterval = null;
-    const statusLabel = document.getElementById("statusLabel");
-
-    const clientId = "web_gcs_" + Math.random().toString(16).substr(2, 8);
-    const client = new Paho.MQTT.Client(BROKER_HOST, Number(BROKER_PORT), clientId);
+    let lastArah = "straight", lastSpeed = 50, sendInterval = null;
+    const client = new Paho.MQTT.Client(BROKER, Number(PORT), "gcs_client_" + Math.random().toString(16).substr(2, 5));
 
     function forceReconnectVideo() {
-        const iframe = document.getElementById('camFrame');
-        const overlay = document.querySelector('.video-overlay');
-        overlay.innerText = "🔄 RESETTING...";
-        iframe.src = "https://tugasakhiradit.loca.lt/cam/?t=" + new Date().getTime();
-        setTimeout(() => { overlay.innerText = "🔴 LIVE CAM"; }, 1500);
+        document.getElementById('camFrame').src = "https://tugasakhiradit.loca.lt/cam/?t=" + Date.now();
     }
 
-    window.onload = function() {
-        forceReconnectVideo();
-        updateSliderThrottle(50);
-    };
+    client.onMessageArrived = (msg) => {
+        if (msg.destinationName === TOPIC_TELE) {
+            const [roll, pitch] = msg.payloadString.split(",").map(parseFloat);
+            
+            // UPDATE TEXT
+            document.getElementById("valRoll").innerText = roll.toFixed(1);
+            document.getElementById("valPitch").innerText = pitch.toFixed(1);
 
-    window.addEventListener('online', forceReconnectVideo);
-
-    client.onConnectionLost = (rc) => { 
-        statusLabel.innerText = "TERPUTUS"; statusLabel.className = "status"; 
-        setTimeout(eksekusiKoneksiMQTT, 3000);
-    };
-
-    // DAFTARKAN FUNGSI MENERIMA DATA MASUK (INCOMING TELEMETRY)
-    client.onMessageArrived = (message) => {
-        if (message.destinationName === TOPIC_TELEMETRY) {
-            const dataData = message.payloadString.split(",");
-            if (dataData.length === 2) {
-                document.getElementById("txtRoll").innerText = dataData[0];
-                document.getElementById("txtPitch").innerText = dataData[1];
-            }
+            // --- UPDATE VISUAL AHRS ---
+            // Roll: Memutar background (dikali -1 agar arah miring sesuai asli)
+            // Pitch: Menggeser background naik/turun (1 derajat = sekitar 2 pixel)
+            const visual = document.getElementById("ahrsVisual");
+            const pitchOffset = pitch * 2.5; 
+            visual.style.transform = `rotate(${-roll}deg) translateY(${pitchOffset}px)`;
         }
     };
 
-    function eksekusiKoneksiMQTT() {
-        statusLabel.innerText = "KONEKSI..."; statusLabel.className = "status";
-        client.connect({
-            useSSL: true, timeout: 5,
-            onSuccess: () => { 
-                statusLabel.innerText = "ONLINE"; 
-                statusLabel.className = "status connected"; 
-                // Begitu terhubung, langsung subscribe ke jalur sensor Raspi
-                client.subscribe(TOPIC_TELEMETRY);
-            },
-            onFailure: () => { setTimeout(eksekusiKoneksiMQTT, 5000); }
-        });
+    client.onConnectionLost = () => { location.reload(); };
+
+    function connect() {
+        client.connect({ useSSL: true, onSuccess: () => {
+            document.getElementById("statusLabel").innerText = "ONLINE";
+            document.getElementById("statusLabel").classList.add("connected");
+            client.subscribe(TOPIC_TELE);
+            forceReconnectVideo();
+        }});
+    }
+    connect();
+
+    function sendData() {
+        if (client.isConnected()) {
+            const msg = new Paho.MQTT.Message(`${lastArah},${lastSpeed}`);
+            msg.destinationName = TOPIC_CTRL;
+            client.send(msg);
+        }
     }
 
-    eksekusiKoneksiMQTT();
-
-    function kirimDataMQTT(payload) { 
-        if (client && client.isConnected()) { 
-            const message = new Paho.MQTT.Message(payload);
-            message.destinationName = TOPIC_CONTROL;
-            client.send(message); 
-        } 
-    }
-    
-    function picuLoopPengiriman() { 
-        if (!sendInterval) { sendInterval = setInterval(() => { kirimDataMQTT(`${lastArah},${lastSpeed}`); }, 120); } 
-    }
-
-    function updateSliderThrottle(val) {
-        let rawValue = parseInt(val); lastSpeed = rawValue;
-        let displayPercent = 0; let statusMotor = "DIAM";
+    function updateThrottle(v) {
+        lastSpeed = parseInt(v);
         const fill = document.getElementById("sliderFill");
-        const knob = document.getElementById("sliderKnob");
-        
-        knob.style.top = (160 - (rawValue * 1.6)) + "px";
-
-        if (rawValue > 50) {
-            displayPercent = (rawValue - 50) * 2; statusMotor = "MAJU";
-            fill.style.top = (160 - (rawValue * 1.6)) + "px"; fill.style.height = ((rawValue - 50) * 1.6) + "px";
-        } else if (rawValue < 50) {
-            displayPercent = (50 - rawValue) * 2; statusMotor = "MUNDUR";
-            fill.style.top = "80px"; fill.style.height = ((50 - rawValue) * 1.6) + "px";
+        if(lastSpeed >= 50) {
+            fill.style.bottom = "50%"; fill.style.height = ((lastSpeed-50)) + "%";
         } else {
-            fill.style.top = "80px"; fill.style.height = "0px";
+            fill.style.bottom = (lastSpeed) + "%"; fill.style.height = (50-lastSpeed) + "%";
         }
-        document.getElementById("txtSpeed").innerText = displayPercent;
-        document.getElementById("txtStatusMotor").innerText = statusMotor;
-        picuLoopPengiriman();
+        document.getElementById("txtSpeed").innerText = Math.abs((lastSpeed-50)*2);
+        if(!sendInterval) sendInterval = setInterval(sendData, 150);
     }
 
+    // Joystick Simple
     var nipplejs = {
-        create: function (opts) {
-            var zone = opts.zone; 
-            var box = document.createElement("div");
-            box.style.position = "absolute"; box.style.width = "100px"; box.style.height = "100px"; box.style.left = "50%"; box.style.top = "50%"; box.style.transform = "translate(-50%, -50%)";
-            box.style.borderRadius = "50%"; box.style.background = "rgba(255, 107, 0, 0.1)"; box.style.border = "2px solid #ff6b00";
-            
-            var nip = document.createElement("div");
-            nip.style.width = "40px"; nip.style.height = "40px"; nip.style.position = "absolute"; nip.style.left = "28px"; nip.style.top = "28px"; nip.style.borderRadius = "50%";
-            nip.style.background = "#ff6b00"; box.appendChild(nip); zone.appendChild(box); 
-            
-            var isDrag = false; var cb = {};
-
-            var handler = function (e) {
-                if (!isDrag) return; 
-                var t = e.touches ? e.touches[0] : e;
-                var r = box.getBoundingClientRect();
-                var dx = t.clientX - (r.left + 50);
-                var dy = t.clientY - (r.top + 50);
-                var d = Math.sqrt(dx * dx + dy * dy);
-                
-                if (d > 50) { dx = (dx / d) * 50; }
-                nip.style.transform = "translate(" + dx + "px, 0px)";
-                var xA = "straight"; if (dx < -12) xA = "left"; else if (dx > 12) xA = "right";
-                if (cb["move"]) cb["move"](xA);
+        create: function(o) {
+            var z = o.zone, b = document.createElement("div"), n = document.createElement("div"), isD = false;
+            b.style = "position:absolute;width:80px;height:80px;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;background:rgba(255,107,0,0.1);border:2px solid #ff6b00";
+            n.style = "width:30px;height:30px;position:absolute;left:23px;top:23px;border-radius:50%;background:#ff6b00";
+            b.appendChild(n); z.appendChild(b);
+            const move = (e) => {
+                if(!isD) return;
+                const t = e.touches ? e.touches[0] : e, r = b.getBoundingClientRect();
+                let dx = t.clientX - (r.left + 40);
+                dx = Math.max(-40, Math.min(40, dx));
+                n.style.transform = `translateX(${dx}px)`;
+                lastArah = dx < -10 ? "left" : dx > 10 ? "right" : "straight";
+                document.getElementById("txtArah").innerText = lastArah;
+                if(!sendInterval) sendInterval = setInterval(sendData, 150);
             };
-
-            zone.addEventListener("mousedown", (e) => { isDrag = true; handler(e); });
-            document.addEventListener("mousemove", handler);
-            document.addEventListener("mouseup", () => { if(isDrag){ isDrag = false; nip.style.transform = "translate(0px, 0px)"; if(cb["end"])cb["end"](); } });
-            zone.addEventListener("touchstart", (e) => { isDrag = true; handler(e); }, { passive: true });
-            document.addEventListener("touchmove", handler, { passive: false });
-            document.addEventListener("touchend", () => { if(isDrag){ isDrag = false; nip.style.transform = "translate(0px, 0px)"; if(cb["end"])cb["end"](); } });
-            return { on: (e, c) => { cb[e] = c; } };
+            z.addEventListener("mousedown", () => isD = true);
+            z.addEventListener("touchstart", () => isD = true);
+            document.addEventListener("mousemove", move);
+            document.addEventListener("touchmove", move);
+            document.addEventListener("mouseup", () => { isD = false; n.style.transform = "translateX(0)"; lastArah="straight"; });
+            document.addEventListener("touchend", () => { isD = false; n.style.transform = "translateX(0)"; lastArah="straight"; });
         }
     };
-
-    const joy = nipplejs.create({ zone: document.getElementById('joystick-zone') });
-    joy.on('move', (arah) => { document.getElementById("txtArah").innerText = arah; lastArah = arah; picuLoopPengiriman(); });
-    joy.on('end', () => { lastArah = "straight"; document.getElementById("txtArah").innerText = "straight"; picuLoopPengiriman(); });
+    nipplejs.create({zone: document.getElementById("joystick-zone")});
 
     function emergencyStop() {
-        clearInterval(sendInterval); sendInterval = null; lastArah = "straight"; lastSpeed = 50;
-        document.getElementById("throttleSlider").value = 50; updateSliderThrottle(50);
-        kirimDataMQTT("straight,50");
+        lastArah = "straight"; lastSpeed = 50;
+        location.reload();
     }
 </script>
 </body>
