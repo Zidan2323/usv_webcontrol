@@ -59,15 +59,15 @@
         .controls-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .col-throttle { width: 35%; display: flex; flex-direction: column; align-items: center; }
         
-        /* PANDUAN REVISI: Kontainer Slider Fisik dengan Knob Oranye Aktif */
+        /* REVISI VISUAL: Jalur Pengisian Bidirectional murni dari tengah */
         .slider-wrap {
             height: 130px; width: 45px; background: #f0f2f5; border-radius: 15px; border: 2px solid #e1e4e8;
             position: relative; overflow: hidden; cursor: pointer;
         }
-        .slider-fill-active { position: absolute; width: 100%; background: #ffbb80; bottom: 0; height: 50%; }
+        .slider-fill-active { position: absolute; width: 100%; background: #ffbb80; bottom: 50%; height: 0%; }
         .slider-knob {
             position: absolute; left: 0; width: 100%; height: 20px; background: #ff6b00;
-            border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); bottom: calc(50% - 10px); pointer-events: none;
+            border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); bottom: calc(50% - 10px); pointer-events: none; z-index: 5;
         }
 
         .col-steering { width: 60%; display: flex; flex-direction: column; align-items: center; }
@@ -158,7 +158,6 @@
         }
     };
 
-    // FIX AUTO-REFRESH LOOP: Ganti reload keras dengan fungsi panggil ulang koneksi aman
     client.onConnectionLost = () => { 
         document.getElementById("statusLabel").innerText = "TERPUTUS";
         document.getElementById("statusLabel").className = "status";
@@ -188,12 +187,10 @@
     }
 
     function startSendingLoop() {
-        if (!sendInterval) {
-            sendInterval = setInterval(sendData, 120);
-        }
+        if (!sendInterval) { sendInterval = setInterval(sendData, 120); }
     }
 
-    // --- ENGINE BARU: KONTROL SLIDER SENTUH RESOLUSI MOBILE ---
+    // --- ENGINE SLIDER BIDIRECTIONAL DARI TENGAH ---
     const throttleZone = document.getElementById("throttleZone");
     const sliderFill = document.getElementById("sliderFill");
     const sliderKnob = document.getElementById("sliderKnob");
@@ -204,15 +201,23 @@
         let posisiMurni = rect.bottom - clientY;
         let persentase = (posisiMurni / rect.height) * 100;
         
-        // Batasi gerakan 0 hingga 100%
         persentase = Math.max(0, Math.min(100, persentase));
         lastSpeed = Math.round(persentase);
 
-        // Update Tampilan Komponen Visual
+        // Atur posisi tombol (knob)
         sliderKnob.style.bottom = `calc(${persentase}% - 10px)`;
-        sliderFill.style.height = `${persentase}%`;
 
-        // Konversi persentase motor ke teks display GCS
+        // REVISI LOGIKA JALUR WARNA: Hitung jarak regangan dari titik tengah (50%)
+        if (persentase >= 50) {
+            // Jika digeser ke MAJU (atas)
+            sliderFill.style.bottom = "50%";
+            sliderFill.style.height = `${persentase - 50}%`;
+        } else {
+            // Jika digeser ke MUNDUR (bawah)
+            sliderFill.style.bottom = `${persentase}%`;
+            sliderFill.style.height = `${50 - persentase}%`;
+        }
+
         let nilaiDisplay = Math.abs((lastSpeed - 50) * 2);
         document.getElementById("txtSpeed").innerText = nilaiDisplay;
         
@@ -232,10 +237,7 @@
 
     throttleZone.addEventListener("touchstart", (e) => {
         prosesSentuhanThrottle(e);
-        const touchMoveHandler = (ev) => {
-            ev.preventDefault();
-            prosesSentuhanThrottle(ev);
-        };
+        const touchMoveHandler = (ev) => { ev.preventDefault(); prosesSentuhanThrottle(ev); };
         const touchEndHandler = () => {
             document.removeEventListener("touchmove", touchMoveHandler);
             document.removeEventListener("touchend", touchEndHandler);
@@ -243,7 +245,6 @@
         document.addEventListener("touchmove", touchMoveHandler, { passive: false });
         document.addEventListener("touchend", touchEndHandler);
     }, { passive: true });
-
 
     // --- STEERING JOYSTICK ENGINE ---
     var simpleJoy = {
@@ -263,12 +264,7 @@
                 startSendingLoop();
             };
             
-            const end = () => { 
-                isD = false; 
-                n.style.transform = "translateX(0)"; 
-                lastArah = "straight"; 
-                document.getElementById("txtArah").innerText = "straight"; 
-            };
+            const end = () => { isD = false; n.style.transform = "translateX(0)"; lastArah = "straight"; document.getElementById("txtArah").innerText = "straight"; };
             
             z.addEventListener("mousedown", () => isD = true);
             z.addEventListener("touchstart", () => isD = true, { passive: true });
@@ -281,18 +277,14 @@
     simpleJoy.create({zone: document.getElementById("joy-zone-simple")});
 
     function emergencyStop() {
-        clearInterval(sendInterval);
-        sendInterval = null;
-        lastArah = "straight";
-        lastSpeed = 50;
+        clearInterval(sendInterval); sendInterval = null;
+        lastArah = "straight"; lastSpeed = 50;
         sliderKnob.style.bottom = "calc(50% - 10px)";
-        sliderFill.style.height = "50%";
+        sliderFill.style.height = "0%";
         document.getElementById("txtArah").innerText = "straight";
         document.getElementById("txtSpeed").innerText = "0";
         if (client.isConnected()) {
-            const msg = new Paho.MQTT.Message("straight,50");
-            msg.destinationName = TOPIC_CTRL;
-            client.send(msg);
+            client.send(new Paho.MQTT.Message("straight,50") {{ destinationName: TOPIC_CTRL }});
         }
     }
 </script>
