@@ -3,56 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GCS USV AHRS</title>
+    <title>GCS USV Telemetry</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
     <style>
         * { box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 8px;
+            font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; color: #333; margin: 0; padding: 8px;
             display: flex; justify-content: center; align-items: center; min-height: 100vh;
             user-select: none; -webkit-user-select: none; touch-action: none;
         }
         
         .container {
-            width: 100%; max-width: 410px; background: #fff; padding: 12px;
+            width: 100%; max-width: 400px; background: #fff; padding: 15px;
             border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08);
             border: 1px solid #e1e4e8; display: flex; flex-direction: column;
         }
 
         /* Header */
-        .header {
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
-        }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         h2 { color: #ff6b00; margin: 0; font-size: 16px; font-weight: 800; text-transform: uppercase; }
-        .status { padding: 3px 10px; border-radius: 20px; font-weight: bold; font-size: 10px; background-color: #d9383a; color: #fff; }
+        .status { padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 10px; background-color: #d9383a; color: #fff; }
         .connected { background-color: #2ed573; }
 
-        /* AHRS VISUAL BOX */
-        .ahrs-box {
-            width: 100%; height: 110px; background: #333; border-radius: 12px;
-            margin-bottom: 8px; position: relative; overflow: hidden; border: 2px solid #666;
-        }
-        .ahrs-sky {
-            position: absolute; width: 200%; height: 400%; top: -150%; left: -50%;
-            background: linear-gradient(to bottom, #4cc9f0 50%, #8b4513 50%);
-            transition: transform 0.05s linear;
-        }
-        .ahrs-overlay {
-            position: absolute; width: 100%; height: 100%; top: 0; left: 0;
-            display: flex; align-items: center; justify-content: center; pointer-events: none;
-        }
-        .ship-indi {
-            width: 50%; height: 2px; background: #ff6b00; position: relative; box-shadow: 0 0 10px rgba(0,0,0,0.5);
-        }
-        .ahrs-text {
-            position: absolute; bottom: 3px; width: 100%; display: flex;
-            justify-content: space-around; color: white; font-family: monospace; font-size: 9px;
-        }
-
-        /* VIDEO STREAM BOX */
+        /* LIVE STREAMING VIDEO */
         .video-wrapper {
-            width: 100%; height: 150px; background-color: #000; border-radius: 12px; border: 2px solid #ff6b00;
-            overflow: hidden; position: relative; margin-bottom: 6px;
+            width: 100%; height: 180px; background-color: #000; border-radius: 12px; border: 2px solid #ff6b00;
+            overflow: hidden; position: relative; margin-bottom: 8px;
         }
         .video-wrapper iframe { width: 100%; height: 100%; border: none; }
         .video-overlay {
@@ -62,49 +38,45 @@
 
         .reconnect-btn {
             width: 100%; background: #fff5ed; color: #ff6b00; border: 1px solid #ffbb80;
-            padding: 6px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer;
-            text-transform: uppercase; margin-bottom: 8px;
+            padding: 8px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer;
+            text-transform: uppercase; margin-bottom: 12px;
         }
-        .reconnect-btn:active { background: #ff6b00; color: white; }
 
-        /* DATA GRID */
+        /* MPU TELEMETRY WIDGET (ANGKA MURNI) */
+        .mpu-grid {
+            display: flex; gap: 10px; margin-bottom: 12px;
+        }
+        .mpu-card {
+            flex: 1; background: #f4f5f7; border: 1px solid #e1e4e8; border-radius: 10px; padding: 10px; text-align: center;
+        }
+        .mpu-label { font-size: 10px; font-weight: bold; color: #666; text-transform: uppercase; margin-bottom: 4px; }
+        .mpu-val { font-size: 20px; font-weight: bold; color: #2b7de9; font-family: monospace; }
+
+        /* DATA MONITOR MOTOR */
         .data-stats-grid {
             display: flex; justify-content: space-around; background: #fdf1e7;
-            padding: 8px; border-radius: 10px; margin-bottom: 10px; font-family: monospace; font-size: 11px; border: 1px solid #ffd8b3;
+            padding: 10px; border-radius: 10px; margin-bottom: 15px; font-family: monospace; font-size: 12px; border: 1px solid #ffd8b3;
         }
 
-        /* --- SEJAJAR KIRI KANAN PANEL (THROTTLE & STEERING) --- */
+        /* PANEL KONTROL SEJAJAR (THROTTLE & STEERING) */
         .controls-row {
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 5px;
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
         }
-        
-        /* Kolom Kiri: Throttle */
-        .col-throttle {
-            width: 35%; display: flex; flex-direction: column; align-items: center;
-        }
+        .col-throttle { width: 35%; display: flex; flex-direction: column; align-items: center; }
         .slider-wrap {
-            height: 120px; width: 45px; background: #f0f2f5; border-radius: 15px; border: 2px solid #e1e4e8;
+            height: 130px; width: 45px; background: #f0f2f5; border-radius: 15px; border: 2px solid #e1e4e8;
             position: relative; overflow: hidden;
         }
         .slider-fill-active { position: absolute; width: 100%; background: #ff6b00; bottom: 0; }
-        .slider-in {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0;
-            cursor: pointer; appearance: slider-vertical; -webkit-appearance: slider-vertical;
-        }
+        .slider-in { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; appearance: slider-vertical; -webkit-appearance: slider-vertical; }
 
-        /* Kolom Kanan: Steering */
-        .col-steering {
-            width: 60%; display: flex; flex-direction: column; align-items: center;
-        }
-        #joy-zone-simple {
-            width: 120px; height: 120px; background: #fdf1e7; border-radius: 50%; border: 2px dashed #ffbb80; position: relative;
-        }
-        
-        .control-label { font-size: 9px; font-weight: bold; margin-top: 4px; text-transform: uppercase; color: #555; }
+        .col-steering { width: 60%; display: flex; flex-direction: column; align-items: center; }
+        #joy-zone-simple { width: 130px; height: 130px; background: #fdf1e7; border-radius: 50%; border: 2px dashed #ffbb80; position: relative; }
+        .control-label { font-size: 9px; font-weight: bold; margin-top: 5px; text-transform: uppercase; color: #555; letter-spacing: 0.5px; }
 
         /* EMERGENCY BUTTON */
         .stop-btn {
-            width: 100%; padding: 12px; font-size: 14px; font-weight: bold; text-transform: uppercase;
+            width: 100%; padding: 14px; font-size: 14px; font-weight: bold; text-transform: uppercase;
             background: #d9383a; color: white; border: none; border-radius: 10px; cursor: pointer;
         }
     </style>
@@ -113,19 +85,8 @@
 
 <div class="container">
     <div class="header">
-        <h2>GCS USV MOBILE</h2>
+        <h2>GCS TELEMETRY</h2>
         <div id="statusLabel" class="status">KONEKSI...</div>
-    </div>
-
-    <div class="ahrs-box">
-        <div class="ahrs-sky" id="ahrsVisual"></div>
-        <div class="ahrs-overlay">
-            <div class="ship-indi"></div>
-        </div>
-        <div class="ahrs-text">
-            <span>ROLL: <b id="valRoll">0.0</b>°</span>
-            <span>PITCH: <b id="valPitch">0.0</b>°</span>
-        </div>
     </div>
 
     <div class="video-wrapper">
@@ -133,6 +94,17 @@
         <div class="video-overlay">🔴 LIVE CAM</div>
     </div>
     <button class="reconnect-btn" onclick="forceReconnectVideo()">🔄 RECONNECT</button>
+
+    <div class="mpu-grid">
+        <div class="mpu-card">
+            <div class="mpu-label">⚡ Roll Angle</div>
+            <div class="mpu-val"><span id="txtRoll">0.0</span>°</div>
+        </div>
+        <div class="mpu-card">
+            <div class="mpu-label">⚡ Pitch Angle</div>
+            <div class="mpu-val"><span id="txtPitch">0.0</span>°</div>
+        </div>
+    </div>
 
     <div class="data-stats-grid">
         <div>KEMUDI: <b id="txtArah" style="color:#ff6b00">straight</b></div>
@@ -164,7 +136,7 @@
     const TOPIC_TELE = "undip/aterkia/zidan/telemetry";
 
     let lastArah = "straight", lastSpeed = 50, sendInterval = null;
-    const client = new Paho.MQTT.Client(BROKER, Number(PORT), "gcs_m_" + Math.random().toString(16).substr(2, 4));
+    const client = new Paho.MQTT.Client(BROKER, Number(PORT), "gcs_u_" + Math.random().toString(16).substr(2, 4));
 
     function forceReconnectVideo() {
         document.getElementById('camFrame').src = "https://tugasakhiradit.loca.lt/cam/?t=" + Date.now();
@@ -174,17 +146,8 @@
         if (msg.destinationName === TOPIC_TELE) {
             const parts = msg.payloadString.split(",");
             if (parts.length === 2) {
-                const roll = parseFloat(parts[0]) || 0;
-                const pitch = parseFloat(parts[1]) || 0;
-                
-                document.getElementById("valRoll").innerText = roll.toFixed(1);
-                document.getElementById("valPitch").innerText = pitch.toFixed(1);
-
-                const visual = document.getElementById("ahrsVisual");
-                if (visual) {
-                    const pitchOffset = pitch * 1.8; // Menyesuaikan gerak naik turun di layar kecil
-                    visual.style.transform = `rotate(${-roll}deg) translateY(${pitchOffset}px)`;
-                }
+                document.getElementById("txtRoll").innerText = parseFloat(parts[0]).toFixed(1);
+                document.getElementById("txtPitch").innerText = parseFloat(parts[1]).toFixed(1);
             }
         }
     };
@@ -220,7 +183,7 @@
         if(!sendInterval) sendInterval = setInterval(sendData, 150);
     }
 
-    // Joystick Engine
+    // Joystick 
     var simpleJoy = {
         create: function(o) {
             var z = o.zone, b = document.createElement("div"), n = document.createElement("div"), isD = false;
