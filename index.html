@@ -261,9 +261,9 @@
     <div class="main-container">
         
         <div class="panel">
-            <div class="panel-title">LIVE CAMERA MONITOR (LOCALTONET STATIS)</div>
+            <div class="panel-title">LIVE CAMERA MONITOR (SERVEO STATIS)</div>
             <div class="video-wrapper">
-                <iframe id="camFrame" src="https://3bovjczenb.localto.net/video_feed"></iframe>
+                <iframe id="camFrame" src="https://20f25a1ef756719f-182-8-211-11.serveousercontent.com/video_feed"></iframe>
             </div>
             <button class="btn-reconnect" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO STREAM</button>
         </div>
@@ -313,7 +313,6 @@
     <script type="text/javascript">
         const logBox = document.getElementById("consoleLog");
         
-        // FIX SAKTI: Fungsi logger aman menggunakan objek DOM yang valid
         function logKeConsole(pesan) {
             if (logBox) {
                 const waktu = new Date().toLocaleTimeString();
@@ -322,18 +321,18 @@
             }
         }
 
-        // FIX SAKTI: Port diganti ke 8084 (WebSocket Secure) agar lolos enkripsi HTTPS Vercel
         const BROKER_URL = "wss://broker.emqx.io:8084/mqtt"; 
         const TOPIC_CONTROL = "undip/aterkia/zidan/control";
         const TOPIC_TELEMETRY = "undip/aterkia/zidan/telemetry";
-        const LINK_VIDEO_STATIS = "https://3bovjczenb.localto.net/video_feed";
+        
+        // AMAN: Sinkronisasi variabel reconnect dengan link Serveo
+        const LINK_VIDEO_STATIS = "https://20f25a1ef756719f-182-8-211-11.serveousercontent.com/video_feed";
 
         let currentSteerDirection = "straight";
         let isDragging = false;
 
         logKeConsole("Menghubungkan ke Broker Aman EMQX via SSL/TLS Port 8084...");
 
-        // Inisialisasi client lewat library MQTT modern
         const client = mqtt.connect(BROKER_URL, {
             clientId: "gcs_zidan_" + Math.random().toString(16).substr(2, 8),
             clean: true,
