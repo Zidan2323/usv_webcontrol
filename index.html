@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GCS Aterkia USV - Zidan</title>
+    <title>GCS TUGAS AKHIR</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
     <style>
         * {
@@ -16,18 +16,18 @@
         body {
             background-color: #1a1c1e;
             color: #e3e2e6;
-            padding: 20px;
+            padding: 15px;
         }
 
         header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             padding-bottom: 10px;
             border-bottom: 2px solid #334455;
         }
 
         header h1 {
-            font-size: 24px;
+            font-size: 22px;
             color: #4791ff;
             text-transform: uppercase;
             letter-spacing: 2px;
@@ -38,7 +38,7 @@
             padding: 5px 15px;
             border-radius: 20px;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 11px;
             margin-top: 5px;
             background-color: #ba1a1a;
             color: white;
@@ -49,47 +49,38 @@
         }
 
         .main-container {
-            display: table;
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
-        .row {
-            display: table-row;
+        @media(min-width: 768px) {
+            .main-container {
+                flex-direction: row;
+            }
         }
 
-        .video-panel, .telemetry-panel {
-            display: table-cell;
-            vertical-align: top;
+        .panel {
+            flex: 1;
             background-color: #24262a;
             border-radius: 12px;
-            padding: 20px;
+            padding: 15px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
 
-        .video-panel {
-            width: 60%;
-        }
-
-        .telemetry-panel {
-            width: 40%;
-        }
-
         .panel-title {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             color: #8cb4f9;
             border-left: 4px solid #4791ff;
-            padding-left: 10px;
+            padding-left: 8px;
         }
 
-        /* Pembungkus Iframe Video Spek Raspi */
         .video-wrapper {
             position: relative;
             width: 100%;
-            padding-bottom: 75%; /* Rasio 4:3 sesuai resolusi 320x240 */
+            padding-bottom: 75%; 
             background-color: #000;
             border-radius: 8px;
             overflow: hidden;
@@ -108,63 +99,141 @@
         .btn-reconnect {
             display: block;
             width: 100%;
-            margin-top: 15px;
-            padding: 12px;
-            background-color: #4791ff;
-            color: #002f6c;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #334455;
+            color: #ffffff;
             border: none;
             border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
+            font-size: 13px;
             text-align: center;
-            font-size: 14px;
-            transition: background-color 0.2s;
         }
 
-        .btn-reconnect:hover {
-            background-color: #8cb4f9;
-        }
-
-        /* Widget Parameter Sensor MPU */
+        /* Widget Sensor MPU */
         .widget-grid {
-            display: table;
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 10px;
-        }
-
-        .widget-row {
-            display: table-row;
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
         }
 
         .widget-card {
-            display: table-cell;
+            flex: 1;
             background-color: #1a1c1e;
             border: 1px solid #3f4752;
             border-radius: 8px;
-            padding: 15px;
+            padding: 12px;
             text-align: center;
-            width: 33.33%;
         }
 
         .widget-label {
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
             color: #939099;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
 
         .widget-value {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             color: #ffffff;
         }
 
         .unit {
-            font-size: 12px;
-            font-weight: normal;
-            color: #8cb4f9;
-            margin-left: 2px;
+            font-size: 11px;
+            color: #4791ff;
+        }
+
+        /* ==============================================================================
+        🕹️ UI KONTROL MANUAL LAMALU (THROTTLE, JOYSTICK, EMERGENCY)
+        ============================================================================== */
+        .control-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background-color: #1a1c1e;
+            border: 1px solid #3f4752;
+            border-radius: 8px;
+            padding: 20px 10px;
+            margin-top: 15px;
+        }
+
+        .throttle-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .throttle-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 60px;
+            height: 150px;
+            background: #24262a;
+            border-radius: 30px;
+            border: 2px solid #3f4752;
+            outline: none;
+            writing-mode: bt-lr; /* Support vertical slider di beberapa browser */
+            -webkit-writing-mode: vertical-lr;
+            direction: rtl;
+        }
+
+        .throttle-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 50px;
+            height: 30px;
+            border-radius: 15px;
+            background: #ff7b00;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .joystick-zone {
+            width: 160px;
+            height: 160px;
+            background: radial-gradient(circle, #24262a 40%, #1a1c1e 100%);
+            border: 2px dashed #ff7b00;
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+        }
+
+        .joystick-handle {
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, #ff9d00 0%, #d45d00 100%);
+            border-radius: 50%;
+            position: absolute;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.6);
+            transition: top 0.1s, left 0.1s;
+        }
+
+        .btn-emergency {
+            display: block;
+            width: 100%;
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #ba1a1a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+        }
+
+        .btn-emergency:hover {
+            background-color: #ff1744;
         }
 
         .log-panel {
@@ -173,7 +242,7 @@
             border: 1px solid #3f4752;
             border-radius: 8px;
             padding: 10px;
-            height: 120px;
+            height: 90px;
             overflow-y: auto;
             font-family: monospace;
             font-size: 11px;
@@ -189,62 +258,72 @@
     </header>
 
     <div class="main-container">
-        <div class="row">
-            
-            <div class="video-panel">
-                <div class="panel-title">LIVE CAMERA STREAM (LOCALTONET MULTIPART)</div>
-                <div class="video-wrapper">
-                    <iframe id="camFrame" src="https://3bovjczenb.localto.net/video_feed"></iframe>
-                </div>
-                <button class="btn-reconnect" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO STREAM</button>
+        
+        <div class="panel">
+            <div class="panel-title">LIVE CAMERA MONITOR (LOCALTONET STATIS)</div>
+            <div class="video-wrapper">
+                <iframe id="camFrame" src="https://3bovjczenb.localto.net/video_feed"></iframe>
             </div>
-
-            <div class="telemetry-panel">
-                <div class="panel-title">REAL-TIME TELEMETRY (MPU-6050)</div>
-                
-                <div class="widget-grid">
-                    <div class="widget-row">
-                        <div class="widget-card">
-                            <div class="widget-label">Sudut Roll</div>
-                            <div class="widget-value"><span id="txtRoll">0.0</span><span class="unit">°</span></div>
-                        </div>
-                        <div class="widget-card">
-                            <div class="widget-label">Sudut Pitch</div>
-                            <div class="widget-value"><span id="txtPitch">0.0</span><span class="unit">°</span></div>
-                        </div>
-                        <div class="widget-card">
-                            <div class="widget-label">Yaw Rate</div>
-                            <div class="widget-value"><span id="txtYawRate">0.0</span><span class="unit">°/s</span></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="panel-title" style="margin-top: 25px;">CONSOLE LOGS</div>
-                <div id="consoleLog" class="log-panel">Menunggu koneksi data dari kapal USV...<br></div>
-            </div>
-
+            <button class="btn-reconnect" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO STREAM</button>
         </div>
+
+        <div class="panel">
+            <div class="panel-title">REAL-TIME TELEMETRY (MPU-6050)</div>
+            <div class="widget-grid">
+                <div class="widget-card">
+                    <div class="widget-label">Roll</div>
+                    <div class="widget-value"><span id="txtRoll">0.0</span><span class="unit">°</span></div>
+                </div>
+                <div class="widget-card">
+                    <div class="widget-label">Pitch</div>
+                    <div class="widget-value"><span id="txtPitch">0.0</span><span class="unit">°</span></div>
+                </div>
+                <div class="widget-card">
+                    <div class="widget-label">Yaw Rate</div>
+                    <div class="widget-value"><span id="txtYawRate">0.0</span><span class="unit">°/s</span></div>
+                </div>
+            </div>
+
+            <div class="panel-title" style="margin-top: 15px;">MANUAL ACTUATOR CONTROL</div>
+            
+            <div class="control-container">
+                <div class="throttle-box">
+                    <span style="font-size: 11px; font-weight: bold; color: #ff7b00;">THROTTLE</span>
+                    <input type="range" min="0" max="100" value="0" class="throttle-slider" id="throttleInput" oninput="kirimThrottle(this.value)">
+                    <span id="valThrottle" style="font-size: 12px; font-weight: bold;">0%</span>
+                </div>
+
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                    <span style="font-size: 11px; font-weight: bold; color: #ff7b00;">STEERING CONTROL</span>
+                    <div class="joystick-zone" id="joyZone">
+                        <div class="joystick-handle" id="joyHandle" style="top: 55px; left: 55px;"></div>
+                    </div>
+                    <span id="valSteer" style="font-size: 11px; font-weight: bold; color: #8cb4f9;">Kemudi: straight</span>
+                </div>
+            </div>
+
+            <button class="btn-emergency" onclick="kirimEmergencyStop()">🚨 EMERGENCY STOP</button>
+
+            <div id="consoleLog" class="log-panel">Menunggu koneksi dari kapal USV...<br></div>
+        </div>
+
     </div>
 
     <script type="text/javascript">
-        // --- KONFIGURASI MQTT NETWORK ---
+        // --- CONFIG MQTT NETWORK ---
         const BROKER = "broker.emqx.io";
-        const PORT = 8083; // Port Mqtt via WebSockets (Wajib untuk HTML Browser)
+        const PORT = 8083; 
         const CLIENT_ID = "gcs_zidan_" + Math.random().toString(16).substr(2, 8);
+        const TOPIC_CONTROL = "undip/aterkia/zidan/control";
         const TOPIC_TELEMETRY = "undip/aterkia/zidan/telemetry";
-
-        // Variabel global pengunci link video statis
         const LINK_VIDEO_STATIS = "https://3bovjczenb.localto.net/video_feed";
 
-        // Inisialisasi Paho MQTT Client
         const client = new Paho.MQTT.Client(BROKER, PORT, CLIENT_ID);
-
         client.onConnectionLost = onConnectionLost;
         client.onMessageArrived = onMessageArrived;
 
-        // Menghubungkan GCS ke Broker EMQX
         function hubungkanMqtt() {
-            logKeConsole("Mencoba terhubung ke Broker EMQX: " + BROKER);
+            logKeConsole("Mengetuk broker EMQX: " + BROKER);
             client.connect({
                 onSuccess: onConnect,
                 onFailure: onFailure,
@@ -254,64 +333,127 @@
         }
 
         function onConnect() {
-            logKeConsole("✅ Terhubung Sempurna ke MQTT Broker!");
+            logKeConsole("✅ Komunikasi GCS Online!");
             const statusBar = document.getElementById("statusMqtt");
             statusBar.innerText = "ONLINE";
             statusBar.className = "status-bar online";
-            
-            // Subscribe ke topik telemetri numerik kapal
             client.subscribe(TOPIC_TELEMETRY);
-            logKeConsole("Subscribed ke topik: " + TOPIC_TELEMETRY);
         }
 
         function onFailure(response) {
-            logKeConsole("❌ Gagal Terhubung: " + response.errorMessage);
-            setTimeout(hubungkanMqtt, 5000); // Auto-reconnect jika internet down
+            logKeConsole("❌ Gagal terhubung: " + response.errorMessage);
+            setTimeout(hubungkanMqtt, 5000);
         }
 
         function onConnectionLost(responseObject) {
-            logKeConsole("⚠️ Koneksi Putus: " + responseObject.errorMessage);
+            logKeConsole("⚠️ Koneksi putus: " + responseObject.errorMessage);
             const statusBar = document.getElementById("statusMqtt");
             statusBar.innerText = "DISCONNECTED";
             statusBar.className = "status-bar";
             setTimeout(hubungkanMqtt, 5000);
         }
 
-        // Penanganan Pemotongan Data (Parsing 3 Variabel Numerik)
         function onMessageArrived(msg) {
             if (msg.destinationName === TOPIC_TELEMETRY) {
-                const payload = msg.payloadString;
-                const parts = payload.split(",");
-                
-                // Memastikan payload murni berisi 3 data numerik: ROLL, PITCH, YAW_RATE
+                const parts = msg.payloadString.split(",");
                 if (parts.length === 3) {
                     document.getElementById("txtRoll").innerText = parseFloat(parts[0]).toFixed(1);
                     document.getElementById("txtPitch").innerText = parseFloat(parts[1]).toFixed(1);
                     document.getElementById("txtYawRate").innerText = parseFloat(parts[2]).toFixed(1);
-                } else {
-                    logKeConsole("[RAW DATA]: " + payload);
                 }
             }
         }
 
-        // Fungsi Tombol Reconnect Video (Pencegah Cache Macet Jaringan Seluler)
+        // --- FUNGSI TRANSPORTER PERINTAH MQTT KONTROL KELUAR ---
+        function kirimPerintah(stringPerintah) {
+            if (client && client.isConnected()) {
+                const message = new Paho.MQTT.Message(stringPerintah);
+                message.destinationName = TOPIC_CONTROL;
+                client.send(message);
+            }
+        }
+
+        function kirimThrottle(val) {
+            document.getElementById("valThrottle").innerText = val + "%";
+            const posisiSteer = currentSteerDirection || "straight";
+            kirimPerintah(`${posisiSteer},${val}`);
+        }
+
+        function kirimEmergencyStop() {
+            logKeConsole("🚨 PERINTAH EMERGENCY STOP DISBURKAN!");
+            document.getElementById("throttleInput").value = 0;
+            document.getElementById("valThrottle").innerText = "0%";
+            kirimPerintah("stop,0");
+        }
+
+        // --- LOGIKA JOYSTICK MANUAL ---
+        const joyZone = document.getElementById('joyZone');
+        const joyHandle = document.getElementById('joyHandle');
+        let currentSteerDirection = "straight";
+
+        joyZone.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            prosesGerakanJoystick(touch.clientX, touch.clientY);
+        });
+
+        joyZone.addEventListener('mousemove', (e) => {
+            if(e.buttons === 1) {
+                prosesGerakanJoystick(e.clientX, e.clientY);
+            }
+        });
+
+        joyZone.addEventListener('touchend', resetJoystickPosition);
+        joyZone.addEventListener('mouseup', resetJoystickPosition);
+        joyZone.addEventListener('mouseleave', resetJoystickPosition);
+
+        function prosesGerakanJoystick(clientX, clientY) {
+            const rect = joyZone.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const x = clientX - centerX;
+            
+            // Batasi gerakan horizontal handle
+            let handleX = x + 55;
+            if (handleX < 10) handleX = 10;
+            if (handleX > 100) handleX = 100;
+            
+            joyHandle.style.left = handleX + 'px';
+
+            let arah = "straight";
+            if (x < -25) arah = "left";
+            else if (x > 25) arah = "right";
+
+            if (currentSteerDirection !== arah) {
+                currentSteerDirection = arah;
+                document.getElementById("valSteer").innerText = "Kemudi: " + arah;
+                const currentThrottle = document.getElementById("throttleInput").value;
+                kirimPerintah(`${arah},${currentThrottle}`);
+            }
+        }
+
+        function resetJoystickPosition() {
+            joyHandle.style.left = '55px';
+            if (currentSteerDirection !== "straight") {
+                currentSteerDirection = "straight";
+                document.getElementById("valSteer").innerText = "Kemudi: straight";
+                const currentThrottle = document.getElementById("throttleInput").value;
+                kirimPerintah(`straight,${currentThrottle}`);
+            }
+        }
+
         function forceReconnectVideo() {
-            // Ditambahkan parameter timestamp acak (?t=...) agar browser dipaksa mendownload frame baru
             document.getElementById('camFrame').src = LINK_VIDEO_STATIS + "?t=" + Date.now();
-            logKeConsole("🔄 Menyegarkan jalur video feed LocalToNet...");
+            logKeConsole("🔄 Menyegarkan jalur video feed...");
         }
 
         function logKeConsole(pesan) {
             const consoleBox = document.getElementById("consoleLog");
             const waktu = new Date().toLocaleTimeString();
             consoleBox.innerHTML += `[${waktu}] ${pesan}<br>`;
-            consoleBox.scrollTop = consoleBox.scrollHeight; // Auto scroll ke bawah
+            consoleBox.scrollTop = consoleBox.scrollHeight;
         }
 
-        // Jalankan koneksi MQTT saat halaman web pertama kali dibuka
-        window.onload = () => {
-            hubungkanMqtt();
-        };
+        window.onload = () => { hubungkanMqtt(); };
     </script>
 </body>
 </html>
