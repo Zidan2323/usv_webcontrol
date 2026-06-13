@@ -38,7 +38,7 @@
         .refresh-video-btn {
             width: 100%; background: #fff5ed; color: #ff6b00; border: 1px solid #ffbb80;
             padding: 8px; border-radius: 10px; font-size: 12px; font-weight: bold;
-            cursor: pointer; margin-bottom: 12px;
+            cursor: pointer; margin-bottom: 12px; font-family: sans-serif;
         }
         .refresh-video-btn:active { background: #ff6b00; color: white; }
 
@@ -133,18 +133,14 @@
     const clientId = "web_gcs_" + Math.random().toString(16).substr(2, 8);
     const client = new Paho.MQTT.Client(BROKER_HOST, Number(BROKER_PORT), clientId);
 
-    // --- FIX VIDEO 503 ENGINE ---
-    // Paksa browser menembak ulang jalur LocalTunnel dengan bypass cache total saat GCS dibuka.
     function forceReconnectVideo() {
         const iframe = document.getElementById('camFrame');
         const overlay = document.querySelector('.video-overlay');
-        const originalOverlay = overlay.innerText;
         overlay.innerText = "🔄 RESETTING...";
         iframe.src = "https://tugasakhiradit.loca.lt/cam/?t=" + new Date().getTime();
-        setTimeout(() => { overlay.innerText = originalOverlay; }, 1500);
+        setTimeout(() => { overlay.innerText = "🔴 LIVE CAM"; }, 1500);
     }
 
-    // Sambungkan video saat halaman selesai load
     window.onload = function() {
         forceReconnectVideo();
         updateSliderThrottle(50);
@@ -152,7 +148,6 @@
 
     window.addEventListener('online', forceReconnectVideo);
 
-    // --- MQTT & LOGIC (MODIFIED) ---
     client.onConnectionLost = (rc) => { 
         statusLabel.innerText = "TERPUTUS"; statusLabel.className = "status"; 
         setTimeout(eksekusiKoneksiMQTT, 3000);
@@ -171,7 +166,9 @@
 
     function kirimDataMQTT(payload) { 
         if (client && client.isConnected()) { 
-            client.send(new Paho.MQTT.Message(payload) {{ destinationName: TOPIC }}); 
+            const message = new Paho.MQTT.Message(payload);
+            message.destinationName = TOPIC;
+            client.send(message); 
         } 
     }
     
@@ -201,7 +198,6 @@
         picuLoopPengiriman();
     }
 
-    // Joystick 
     var nipplejs = {
         create: function (opts) {
             var zone = opts.zone; 
@@ -223,8 +219,8 @@
                 var dy = t.clientY - (r.top + 50);
                 var d = Math.sqrt(dx * dx + dy * dy);
                 
-                if (d > 50) { dx = (dx / d) * 50; dx = dx; }
-                nip.style.transform = "translate(" + dx + "px, " + dy + "px)";
+                if (d > 50) { dx = (dx / d) * 50; }
+                nip.style.transform = "translate(" + dx + "px, 0px)"; // Kunci sumbu Y tetap 0 agar belok lurus presisi
                 var xA = "straight"; if (dx < -12) xA = "left"; else if (dx > 12) xA = "right";
                 if (cb["move"]) cb["move"](xA);
             };
@@ -232,8 +228,8 @@
             zone.addEventListener("mousedown", (e) => { isDrag = true; handler(e); });
             document.addEventListener("mousemove", handler);
             document.addEventListener("mouseup", () => { if(isDrag){ isDrag = false; nip.style.transform = "translate(0px, 0px)"; if(cb["end"])cb["end"](); } });
-            zone.addEventListener("touchstart", (e) => { isDrag = true; handler(e); });
-            document.addEventListener("touchmove", handler);
+            zone.addEventListener("touchstart", (e) => { isDrag = true; handler(e); }, { passive: true });
+            document.addEventListener("touchmove", handler, { passive: false });
             document.addEventListener("touchend", () => { if(isDrag){ isDrag = false; nip.style.transform = "translate(0px, 0px)"; if(cb["end"])cb["end"](); } });
             return { on: (e, c) => { cb[e] = c; } };
         }
