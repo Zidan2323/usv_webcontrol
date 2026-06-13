@@ -3,95 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GCS Kapal USV - Tugas Akhir</title>
+    <title>GCS Kapal USV</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
     <style>
         * { box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f5f7; color: #333; margin: 0; padding: 10px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-height: 100vh; overflow: hidden; user-select: none; -webkit-user-select: none;
-            touch-action: none; 
+            font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; color: #333; margin: 0; padding: 10px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden;
+            user-select: none; -webkit-user-select: none; touch-action: none; 
         }
         .container {
-            width: 100%; max-width: 420px; background: #ffffff; padding: 12px;
-            border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); text-align: center;
-            border: 1px solid #e1e4e8;
+            width: 100%; max-width: 420px; background: #ffffff; padding: 15px;
+            border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; border: 1px solid #e1e4e8;
         }
-        h2 { color: #ff6b00; margin: 0 0 2px 0; font-size: 18px; font-weight: 800; }
+        h2 { color: #ff6b00; margin: 0 0 10px 0; font-size: 20px; font-weight: 800; }
         .status {
-            display: inline-block; padding: 4px 12px; border-radius: 15px;
-            font-weight: bold; font-size: 11px; background-color: #d9383a; color: #fff; margin-bottom: 8px; transition: 0.3s;
+            display: inline-block; padding: 5px 15px; border-radius: 20px;
+            font-weight: bold; font-size: 12px; background-color: #d9383a; color: #fff; margin-bottom: 12px;
         }
         .connected { background-color: #2ed573; color: #fff; }
         
-        /* --- Video Stream Box (Tema Putih-Oranye) --- */
+        /* Video */
         .video-container {
-            width: 100%; height: 200px; background-color: #000; border-radius: 12px;
-            margin-bottom: 8px; overflow: hidden; position: relative; border: 2px solid #ff6b00;
+            width: 100%; height: 210px; background-color: #000; border-radius: 12px;
+            margin-bottom: 10px; overflow: hidden; position: relative; border: 2px solid #ff6b00;
         }
         .video-overlay {
-            position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.6);
-            padding: 3px 6px; border-radius: 4px; font-size: 10px; font-family: monospace;
-            color: #ff9f43; pointer-events: none; z-index: 10;
+            position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.6);
+            padding: 4px 8px; border-radius: 5px; font-size: 11px; font-family: monospace; color: #ff9f43; z-index: 10;
         }
-        .video-container iframe {
-            width: 100%; height: 100%; border: none; background: #000;
-        }
+        .video-container iframe { width: 100%; height: 100%; border: none; background: #000; }
 
-        /* Tombol Reconnect Terintegrasi Warna Oranye */
+        /* Tombol Reconnect Bersih */
         .refresh-video-btn {
             width: 100%; background: #fff5ed; color: #ff6b00; border: 1px solid #ffbb80;
-            padding: 6px; border-radius: 8px; font-size: 11px; font-weight: bold;
-            cursor: pointer; margin-bottom: 10px; transition: 0.2s;
+            padding: 8px; border-radius: 10px; font-size: 12px; font-weight: bold;
+            cursor: pointer; margin-bottom: 12px;
         }
-        .refresh-video-btn:active { background: #ff6b00; color: white; border-color: #ff6b00; }
+        .refresh-video-btn:active { background: #ff6b00; color: white; }
 
+        /* Data */
         .data-display {
             display: flex; justify-content: space-around; background: #fdf1e7;
-            padding: 8px; border-radius: 10px; margin-bottom: 10px; font-family: monospace; font-size: 12px;
-            border: 1px solid #ffd8b3;
+            padding: 10px; border-radius: 10px; margin-bottom: 12px; font-family: monospace; font-size: 13px; border: 1px solid #ffd8b3;
         }
         .val { color: #d35400; font-weight: bold; }
 
-        .control-grid {
-            display: flex; width: 100%; margin-bottom: 10px; align-items: center; justify-content: space-between;
-        }
+        /* Kontrol */
+        .control-grid { display: flex; width: 100%; margin-bottom: 12px; align-items: center; justify-content: space-between; }
         .col-slider { width: 30%; text-align: center; }
         .col-joystick { width: 65%; text-align: center; }
 
-        /* Bidirectional Slider Kontras Tinggi */
         .slider-wrapper {
-            height: 150px; width: 40px; display: inline-block; position: relative;
+            height: 160px; width: 45px; display: inline-block; position: relative;
             background: #f0f2f5; border-radius: 20px; border: 2px solid #e1e4e8; overflow: hidden;
         }
-        .slider-fill-track {
-            position: absolute; left: 0; width: 100%; background: #ff6b00;
-            box-shadow: 0 0 8px rgba(255, 107, 0, 0.4);
-        }
+        .slider-fill-track { position: absolute; left: 0; width: 100%; background: #ff6b00; }
         .slider-vertical {
-            position: absolute; top: 0; left: 0; width: 40px; height: 150px; margin: 0;
+            position: absolute; top: 0; left: 0; width: 45px; height: 160px; margin: 0;
             opacity: 0; cursor: pointer; writing-mode: bt-lr; appearance: slider-vertical; -webkit-appearance: slider-vertical; z-index: 3;
         }
         .slider-knob {
-            position: absolute; left: 50%; width: 34px; height: 34px; background: #ffffff;
+            position: absolute; left: 50%; width: 38px; height: 38px; background: #ffffff;
             border: 4px solid #ff6b00; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 4;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
         }
-        .control-label { font-size: 10px; color: #666; margin-top: 4px; font-weight: bold; letter-spacing: 1px; }
+        .control-label { font-size: 11px; color: #555; margin-top: 5px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
 
-        /* Area Ring Joystick Kustom Oranye */
         #joystick-zone {
-            width: 150px; height: 150px; background: #fdf1e7; margin: 0 auto;
-            border-radius: 50%; position: relative; border: 2px dashed #ffbb80;
-            box-shadow: inset 0 2px 8px rgba(0,0,0,0.05); touch-action: none;
+            width: 160px; height: 160px; background: #fdf1e7; margin: 0 auto;
+            border-radius: 50%; position: relative; border: 2px dashed #ffbb80; touch-action: none;
         }
         
+        /* Emergency */
         button.stop-btn {
-            width: 100%; padding: 12px; font-size: 14px; font-weight: bold;
-            background-color: #d9383a; color: white; border: none; border-radius: 10px;
-            cursor: pointer; box-shadow: 0 4px 12px rgba(217, 56, 58, 0.3);
+            width: 100%; padding: 15px; font-size: 16px; font-weight: bold; text-transform: uppercase;
+            background-color: #d9383a; color: white; border: none; border-radius: 12px;
+            cursor: pointer; box-shadow: 0 5px 15px rgba(217, 56, 58, 0.3);
         }
         button.stop-btn:active { background-color: #b32b2d; }
     </style>
@@ -100,16 +88,15 @@
 
 <div class="container">
     <h2>GCS UTAMA - KAPAL USV</h2>
-    <p style="margin: 0 0 6px 0; color:#666; font-size: 11px;">Waduk Sinyal-Stabilized & High Visibility</p>
     
-    <div id="statusLabel" class="status">MENGHUBUNGKAN MQTT...</div>
+    <div id="statusLabel" class="status">KONEKSI...</div>
     
     <div class="video-container">
-        <iframe id="camFrame" src="https://tugasakhiradit.loca.lt/cam/" allow="autoplay; fullscreen"></iframe>
-        <div class="video-overlay" id="videoStatus">🔴 LIVE WEBRTC CAM</div>
+        <iframe id="camFrame" src="about:blank" allow="autoplay; fullscreen"></iframe>
+        <div class="video-overlay">🔴 LIVE CAM</div>
     </div>
 
-    <button class="refresh-video-btn" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO (MANUAL)</button>
+    <button class="refresh-video-btn" onclick="forceReconnectVideo()">🔄 RECONNECT</button>
 
     <div class="data-display">
         <div>KEMUDI: <span id="txtArah" class="val">straight</span></div>
@@ -128,7 +115,7 @@
         
         <div class="col-joystick">
             <div id="joystick-zone"></div>
-            <div class="control-label" style="margin-top: 4px;">STEERING (TOUCH CHIP)</div>
+            <div class="control-label">STEERING</div>
         </div>
     </div>
 
@@ -146,49 +133,37 @@
     const clientId = "web_gcs_" + Math.random().toString(16).substr(2, 8);
     const client = new Paho.MQTT.Client(BROKER_HOST, Number(BROKER_PORT), clientId);
 
+    // --- FIX VIDEO 503 ENGINE ---
+    // Paksa browser menembak ulang jalur LocalTunnel dengan bypass cache total saat GCS dibuka.
     function forceReconnectVideo() {
         const iframe = document.getElementById('camFrame');
-        const overlay = document.getElementById('videoStatus');
-        overlay.innerText = "🔄 RESETTING TEROWONGAN VIDEO...";
-        overlay.style.color = "#d35400";
-        
+        const overlay = document.querySelector('.video-overlay');
+        const originalOverlay = overlay.innerText;
+        overlay.innerText = "🔄 RESETTING...";
         iframe.src = "https://tugasakhiradit.loca.lt/cam/?t=" + new Date().getTime();
-        
-        setTimeout(() => {
-            overlay.innerText = "🔴 LIVE WEBRTC CAM";
-            overlay.style.color = "#ff9f43";
-        }, 1500);
+        setTimeout(() => { overlay.innerText = originalOverlay; }, 1500);
     }
 
-    window.addEventListener('online', () => {
+    // Sambungkan video saat halaman selesai load
+    window.onload = function() {
         forceReconnectVideo();
-    });
+        updateSliderThrottle(50);
+    };
 
-    client.onConnectionLost = (responseObject) => { 
-        statusLabel.innerText = "KONEKSI TERPUTUS"; 
-        statusLabel.className = "status"; 
-        statusLabel.style.backgroundColor = "#d9383a";
+    window.addEventListener('online', forceReconnectVideo);
+
+    // --- MQTT & LOGIC (MODIFIED) ---
+    client.onConnectionLost = (rc) => { 
+        statusLabel.innerText = "TERPUTUS"; statusLabel.className = "status"; 
         setTimeout(eksekusiKoneksiMQTT, 3000);
     };
 
     function eksekusiKoneksiMQTT() {
-        statusLabel.innerText = "MENGHUBUNGKAN MQTT...";
-        statusLabel.className = "status";
-        statusLabel.style.backgroundColor = "#d9383a";
-        
+        statusLabel.innerText = "KONEKSI..."; statusLabel.className = "status";
         client.connect({
-            useSSL: true,
-            timeout: 5,
-            onSuccess: () => { 
-                statusLabel.innerText = "ONLINE (CONTROL & VIDEO READY)"; 
-                statusLabel.className = "status connected"; 
-            },
-            onFailure: (error) => { 
-                statusLabel.innerText = "KONEKSI GAGAL"; 
-                statusLabel.className = "status"; 
-                statusLabel.style.backgroundColor = "#d9383a";
-                setTimeout(eksekusiKoneksiMQTT, 5000);
-            }
+            useSSL: true, timeout: 5,
+            onSuccess: () => { statusLabel.innerText = "ONLINE"; statusLabel.className = "status connected"; },
+            onFailure: () => { setTimeout(eksekusiKoneksiMQTT, 5000); }
         });
     }
 
@@ -196,125 +171,83 @@
 
     function kirimDataMQTT(payload) { 
         if (client && client.isConnected()) { 
-            const message = new Paho.MQTT.Message(payload); 
-            message.destinationName = TOPIC; 
-            client.send(message); 
+            client.send(new Paho.MQTT.Message(payload) {{ destinationName: TOPIC }}); 
         } 
     }
     
     function picuLoopPengiriman() { 
-        if (!sendInterval) { 
-            sendInterval = setInterval(() => { 
-                kirimDataMQTT(`${lastArah},${lastSpeed}`); 
-            }, 120); 
-        } 
+        if (!sendInterval) { sendInterval = setInterval(() => { kirimDataMQTT(`${lastArah},${lastSpeed}`); }, 120); } 
     }
 
     function updateSliderThrottle(val) {
         let rawValue = parseInt(val); lastSpeed = rawValue;
         let displayPercent = 0; let statusMotor = "DIAM";
-        const fillElement = document.getElementById("sliderFill");
-        const knobElement = document.getElementById("sliderKnob");
+        const fill = document.getElementById("sliderFill");
+        const knob = document.getElementById("sliderKnob");
         
-        let knobTopPos = 150 - (rawValue * 1.5);
-        knobElement.style.top = knobTopPos + "px";
+        knob.style.top = (160 - (rawValue * 1.6)) + "px";
 
         if (rawValue > 50) {
             displayPercent = (rawValue - 50) * 2; statusMotor = "MAJU";
-            fillElement.style.top = (150 - (rawValue * 1.5)) + "px";
-            fillElement.style.height = ((rawValue - 50) * 1.5) + "px";
+            fill.style.top = (160 - (rawValue * 1.6)) + "px"; fill.style.height = ((rawValue - 50) * 1.6) + "px";
         } else if (rawValue < 50) {
             displayPercent = (50 - rawValue) * 2; statusMotor = "MUNDUR";
-            fillElement.style.top = "75px";
-            fillElement.style.height = ((50 - rawValue) * 1.5) + "px";
+            fill.style.top = "80px"; fill.style.height = ((50 - rawValue) * 1.6) + "px";
         } else {
-            displayPercent = 0; statusMotor = "DIAM";
-            fillElement.style.top = "75px"; fillElement.style.height = "0px";
+            fill.style.top = "80px"; fill.style.height = "0px";
         }
         document.getElementById("txtSpeed").innerText = displayPercent;
         document.getElementById("txtStatusMotor").innerText = statusMotor;
         picuLoopPengiriman();
     }
 
+    // Joystick 
     var nipplejs = {
-        create: function (options) {
-            var zone = options.zone; 
+        create: function (opts) {
+            var zone = opts.zone; 
             var box = document.createElement("div");
             box.style.position = "absolute"; box.style.width = "100px"; box.style.height = "100px"; box.style.left = "50%"; box.style.top = "50%"; box.style.transform = "translate(-50%, -50%)";
             box.style.borderRadius = "50%"; box.style.background = "rgba(255, 107, 0, 0.1)"; box.style.border = "2px solid #ff6b00";
             
-            var nipple = document.createElement("div");
-            nipple.style.width = "40px"; nipple.style.height = "40px"; nipple.style.position = "absolute"; nipple.style.left = "28px"; nipple.style.top = "28px"; nipple.style.borderRadius = "50%";
-            nipple.style.background = "#ff6b00"; nipple.style.boxShadow = "0 4px 10px rgba(255,107,0,0.3)";
+            var nip = document.createElement("div");
+            nip.style.width = "40px"; nip.style.height = "40px"; nip.style.position = "absolute"; nip.style.left = "28px"; nip.style.top = "28px"; nip.style.borderRadius = "50%";
+            nip.style.background = "#ff6b00"; box.appendChild(nip); zone.appendChild(box); 
             
-            box.appendChild(nipple); 
-            zone.appendChild(box); 
-            
-            var isDragging = false;
-            var callbacks = {};
+            var isDrag = false; var cb = {};
 
-            var moveHandler = function (e) {
-                if (!isDragging) return; 
-                var touch = e.touches ? e.touches[0] : e;
-                var rect = box.getBoundingClientRect();
-                var deltaX = touch.clientX - (rect.left + 50);
-                var deltaY = touch.clientY - (rect.top + 50);
-                var distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            var handler = function (e) {
+                if (!isDrag) return; 
+                var t = e.touches ? e.touches[0] : e;
+                var r = box.getBoundingClientRect();
+                var dx = t.clientX - (r.left + 50);
+                var dy = t.clientY - (r.top + 50);
+                var d = Math.sqrt(dx * dx + dy * dy);
                 
-                if (distance > 50) { deltaX = (deltaX / distance) * 50; deltaY = (deltaY / distance) * 50; }
-                nipple.style.transform = "translate(" + deltaX + "px, " + deltaY + "px)";
-                
-                var directionX = "straight";
-                if (deltaX < -12) directionX = "left";
-                else if (deltaX > 12) directionX = "right";
-                
-                if (callbacks["move"]) callbacks["move"](null, { direction: { x: directionX } });
+                if (d > 50) { dx = (dx / d) * 50; dx = dx; }
+                nip.style.transform = "translate(" + dx + "px, " + dy + "px)";
+                var xA = "straight"; if (dx < -12) xA = "left"; else if (dx > 12) xA = "right";
+                if (cb["move"]) cb["move"](xA);
             };
 
-            var endHandler = function () {
-                if (!isDragging) return;
-                isDragging = false;
-                nipple.style.transform = "translate(0px, 0px)";
-                if (callbacks["end"]) callbacks["end"]();
-            };
-
-            zone.addEventListener("mousedown", function (e) { isDragging = true; moveHandler(e); });
-            document.addEventListener("mousemove", moveHandler);
-            document.addEventListener("mouseup", endHandler);
-
-            zone.addEventListener("touchstart", function (e) { isDragging = true; moveHandler(e); }, { passive: true });
-            document.addEventListener("touchmove", moveHandler, { passive: false });
-            document.addEventListener("touchend", endHandler);
-
-            return { on: function (evt, cb) { callbacks[evt] = cb; } };
+            zone.addEventListener("mousedown", (e) => { isDrag = true; handler(e); });
+            document.addEventListener("mousemove", handler);
+            document.addEventListener("mouseup", () => { if(isDrag){ isDrag = false; nip.style.transform = "translate(0px, 0px)"; if(cb["end"])cb["end"](); } });
+            zone.addEventListener("touchstart", (e) => { isDrag = true; handler(e); });
+            document.addEventListener("touchmove", handler);
+            document.addEventListener("touchend", () => { if(isDrag){ isDrag = false; nip.style.transform = "translate(0px, 0px)"; if(cb["end"])cb["end"](); } });
+            return { on: (e, c) => { cb[e] = c; } };
         }
     };
 
-    const joyManager = nipplejs.create({ zone: document.getElementById('joystick-zone') });
-    joyManager.on('move', (evt, data) => { 
-        if (!data.direction) return; 
-        let arah = data.direction.x || "straight"; 
-        document.getElementById("txtArah").innerText = arah; 
-        lastArah = arah; 
-        picuLoopPengiriman(); 
-    });
-    joyManager.on('end', () => { 
-        lastArah = "straight"; 
-        document.getElementById("txtArah").innerText = "straight"; 
-        picuLoopPengiriman(); 
-    });
+    const joy = nipplejs.create({ zone: document.getElementById('joystick-zone') });
+    joy.on('move', (arah) => { document.getElementById("txtArah").innerText = arah; lastArah = arah; picuLoopPengiriman(); });
+    joy.on('end', () => { lastArah = "straight"; document.getElementById("txtArah").innerText = "straight"; picuLoopPengiriman(); });
 
     function emergencyStop() {
         clearInterval(sendInterval); sendInterval = null; lastArah = "straight"; lastSpeed = 50;
-        document.getElementById("throttleSlider").value = 50;
-        document.getElementById("sliderFill").style.top = "75px"; document.getElementById("sliderFill").style.height = "0px"; document.getElementById("sliderKnob").style.top = "75px";
-        document.getElementById("txtArah").innerText = "straight"; document.getElementById("txtSpeed").innerText = "0"; document.getElementById("txtStatusMotor").innerText = "DIAM";
+        document.getElementById("throttleSlider").value = 50; updateSliderThrottle(50);
         kirimDataMQTT("straight,50");
     }
-
-    window.onload = function() {
-        updateSliderThrottle(50);
-    };
 </script>
 </body>
 </html>
