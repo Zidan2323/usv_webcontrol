@@ -3,267 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GCS Aterkia USV - Zidan Global</title>
+    <title>GCS Autonomous Surface Vehicle</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background-color: #1a1c1e;
-            color: #e3e2e6;
-            padding: 15px;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #334455;
-        }
-
-        header h1 {
-            font-size: 22px;
-            color: #4791ff;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        .status-bar {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 11px;
-            margin-top: 5px;
-            background-color: #ba1a1a;
-            color: white;
-        }
-
-        .online {
-            background-color: #006a4e;
-        }
-
-        .main-container {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        @media(min-width: 768px) {
-            .main-container {
-                flex-direction: row;
-            }
-        }
-
-        .panel {
-            flex: 1;
-            background-color: #24262a;
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-
-        .panel-title {
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 12px;
-            color: #8cb4f9;
-            border-left: 4px solid #4791ff;
-            padding-left: 8px;
-        }
-
-        .video-wrapper {
-            position: relative;
-            width: 100%;
-            padding-bottom: 75%; 
-            background-color: #000;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid #3f4752;
-        }
-
-        .video-wrapper iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        .btn-reconnect {
-            display: block;
-            width: 100%;
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #334455;
-            color: #ffffff;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 13px;
-            text-align: center;
-        }
-
-        /* Widget MPU-6050 Display */
-        .widget-grid {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .widget-card {
-            flex: 1;
-            background-color: #1a1c1e;
-            border: 1px solid #3f4752;
-            border-radius: 8px;
-            padding: 12px;
-            text-align: center;
-        }
-
-        .widget-label {
-            font-size: 10px;
-            text-transform: uppercase;
-            color: #939099;
-            margin-bottom: 3px;
-        }
-
-        .widget-value {
-            font-size: 20px;
-            font-weight: bold;
-            color: #ffffff;
-        }
-
-        .unit {
-            font-size: 11px;
-            color: #4791ff;
-        }
-
-        /* UI Kontrol Aktuator Manual */
-        .control-container {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            background-color: #1a1c1e;
-            border: 1px solid #3f4752;
-            border-radius: 8px;
-            padding: 20px 10px;
-            margin-top: 15px;
-        }
-
-        .throttle-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .throttle-slider {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 60px;
-            height: 150px;
-            background: #24262a;
-            border-radius: 30px;
-            border: 2px solid #3f4752;
-            outline: none;
-            writing-mode: bt-lr; 
-            -webkit-writing-mode: vertical-lr;
-            direction: rtl;
-        }
-
-        .throttle-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 54px;
-            height: 30px;
-            border-radius: 15px;
-            background: #ff7b00;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-        }
-
-        .joystick-zone {
-            width: 160px;
-            height: 160px;
-            background: radial-gradient(circle, #24262a 40%, #1a1c1e 100%);
-            border: 2px dashed #ff7b00;
-            border-radius: 50%;
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
-            user-select: none;
-            touch-action: none;
-        }
-
-        .joystick-handle {
-            width: 50px;
-            height: 50px;
-            background: radial-gradient(circle, #ff9d00 0%, #d45d00 100%);
-            border-radius: 50%;
-            position: absolute;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.6);
-            user-select: none;
-            touch-action: none;
-        }
-
-        .btn-emergency {
-            display: block;
-            width: 100%;
-            margin-top: 15px;
-            padding: 15px;
-            background-color: #ba1a1a;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
-        }
-
-        .btn-emergency:hover {
-            background-color: #ff1744;
-        }
-
-        .log-panel {
-            margin-top: 15px;
-            background-color: #1a1c1e;
-            border: 1px solid #3f4752;
-            border-radius: 8px;
-            padding: 10px;
-            height: 90px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 11px;
-            color: #00ff66;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #1a1c1e; color: #e3e2e6; padding: 15px; }
+        header { text-align: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #334455; }
+        header h1 { font-size: 22px; color: #4791ff; text-transform: uppercase; letter-spacing: 2px; }
+        .status-bar { display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 11px; margin-top: 5px; background-color: #ba1a1a; color: white; }
+        .online { background-color: #006a4e; }
+        .main-container { display: flex; flex-direction: column; gap: 15px; }
+        @media(min-width: 768px) { .main-container { flex-direction: row; } }
+        .panel { flex: 1; background-color: #24262a; border-radius: 12px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .panel-title { font-size: 14px; font-weight: bold; margin-bottom: 12px; color: #8cb4f9; border-left: 4px solid #4791ff; padding-left: 8px; }
+        .video-wrapper { position: relative; width: 100%; padding-bottom: 75%; background-color: #000; border-radius: 8px; overflow: hidden; border: 1px solid #3f4752; }
+        .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+        .btn-reconnect { display: block; width: 100%; margin-top: 10px; padding: 10px; background-color: #334455; color: #ffffff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; text-align: center; }
+        .widget-grid { display: flex; gap: 10px; margin-bottom: 15px; }
+        .widget-card { flex: 1; background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 12px; text-align: center; }
+        .widget-label { font-size: 10px; text-transform: uppercase; color: #939099; margin-bottom: 3px; }
+        .widget-value { font-size: 20px; font-weight: bold; color: #ffffff; }
+        .unit { font-size: 11px; color: #4791ff; }
+        .control-container { display: flex; justify-content: space-around; align-items: center; background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 20px 10px; margin-top: 15px; }
+        .throttle-box { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .throttle-slider { -webkit-appearance: none; appearance: none; width: 60px; height: 150px; background: #24262a; border-radius: 30px; border: 2px solid #3f4752; outline: none; writing-mode: bt-lr; -webkit-writing-mode: vertical-lr; direction: rtl; }
+        .throttle-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 54px; height: 30px; border-radius: 15px; background: #ff7b00; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .joystick-zone { width: 160px; height: 160px; background: radial-gradient(circle, #24262a 40%, #1a1c1e 100%); border: 2px dashed #ff7b00; border-radius: 50%; position: relative; display: flex; justify-content: center; align-items: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); user-select: none; touch-action: none; }
+        .joystick-handle { width: 50px; height: 50px; background: radial-gradient(circle, #ff9d00 0%, #d45d00 100%); border-radius: 50%; position: absolute; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.6); user-select: none; touch-action: none; }
+        .btn-emergency { display: block; width: 100%; margin-top: 15px; padding: 15px; background-color: #ba1a1a; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 6px rgba(0,0,0,0.4); }
+        .btn-emergency:hover { background-color: #ff1744; }
+        .log-panel { margin-top: 15px; background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 10px; height: 90px; overflow-y: auto; font-family: monospace; font-size: 11px; color: #00ff66; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>Aterkia USV - Ground Control Station</h1>
+        <h1>USV Ground Control Station</h1>
         <div id="statusMqtt" class="status-bar">DISCONNECTED</div>
     </header>
 
     <div class="main-container">
         
         <div class="panel">
-            <div class="panel-title">LIVE CAMERA MONITOR (SERVEO STATIS)</div>
+            <div class="panel-title">LIVE CAMERA MONITOR</div>
             <div class="video-wrapper">
-                <iframe id="camFrame" src="https://20f25a1ef756719f-182-8-211-11.serveousercontent.com/video_feed"></iframe>
+                <iframe id="camFrame" src="https://usv-master-stream.serveousercontent.com/video_feed"></iframe>
             </div>
             <button class="btn-reconnect" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO STREAM</button>
         </div>
@@ -321,12 +105,11 @@
             }
         }
 
+        // NETRAL: Topik MQTT diubah menjadi struktur standar riset akademis
         const BROKER_URL = "wss://broker.emqx.io:8084/mqtt"; 
-        const TOPIC_CONTROL = "undip/aterkia/zidan/control";
-        const TOPIC_TELEMETRY = "undip/aterkia/zidan/telemetry";
-        
-        // AMAN: Sinkronisasi variabel reconnect dengan link Serveo
-        const LINK_VIDEO_STATIS = "https://20f25a1ef756719f-182-8-211-11.serveousercontent.com/video_feed";
+        const TOPIC_CONTROL = "usv/control/navigation";
+        const TOPIC_TELEMETRY = "usv/telemetry/sensors";
+        const LINK_VIDEO_STATIS = "https://usv-master-stream.serveousercontent.com/video_feed";
 
         let currentSteerDirection = "straight";
         let isDragging = false;
@@ -334,7 +117,7 @@
         logKeConsole("Menghubungkan ke Broker Aman EMQX via SSL/TLS Port 8084...");
 
         const client = mqtt.connect(BROKER_URL, {
-            clientId: "gcs_zidan_" + Math.random().toString(16).substr(2, 8),
+            clientId: "usv_gcs_client_" + Math.random().toString(16).substr(2, 8),
             clean: true,
             connectTimeout: 4000
         });
@@ -440,27 +223,12 @@
             }
         }
 
-        joyZone.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            joyHandle.style.transition = "none";
-            handleSteeringMove(e.clientX);
-        });
-        window.addEventListener('mousemove', (e) => {
-            if (isDragging) handleSteeringMove(e.clientX);
-        });
+        joyZone.addEventListener('mousedown', (e) => { e.preventDefault(); isDragging = true; joyHandle.style.transition = "none"; handleSteeringMove(e.clientX); });
+        window.addEventListener('mousemove', (e) => { if (isDragging) handleSteeringMove(e.clientX); });
         window.addEventListener('mouseup', resetJoystickPosition);
 
-        joyZone.addEventListener('touchstart', (e) => {
-            isDragging = true;
-            joyHandle.style.transition = "none";
-            handleSteeringMove(e.touches[0].clientX);
-        });
-        joyZone.addEventListener('touchmove', (e) => {
-            if (isDragging) {
-                e.preventDefault(); 
-                handleSteeringMove(e.touches[0].clientX);
-            }
-        });
+        joyZone.addEventListener('touchstart', (e) => { isDragging = true; joyHandle.style.transition = "none"; handleSteeringMove(e.touches[0].clientX); });
+        joyZone.addEventListener('touchmove', (e) => { if (isDragging) { e.preventDefault(); handleSteeringMove(e.touches[0].clientX); } });
         joyZone.addEventListener('touchend', resetJoystickPosition);
 
         function forceReconnectVideo() {
