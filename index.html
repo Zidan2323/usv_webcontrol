@@ -34,7 +34,7 @@
         }
         .video-container iframe { width: 100%; height: 100%; border: none; background: #000; }
 
-        /* Tombol Reconnect Bersih */
+        /* Tombol Reconnect */
         .refresh-video-btn {
             width: 100%; background: #fff5ed; color: #ff6b00; border: 1px solid #ffbb80;
             padding: 8px; border-radius: 10px; font-size: 12px; font-weight: bold;
@@ -42,12 +42,17 @@
         }
         .refresh-video-btn:active { background: #ff6b00; color: white; }
 
-        /* Data */
+        /* Data Displays */
         .data-display {
             display: flex; justify-content: space-around; background: #fdf1e7;
-            padding: 10px; border-radius: 10px; margin-bottom: 12px; font-family: monospace; font-size: 13px; border: 1px solid #ffd8b3;
+            padding: 10px; border-radius: 10px; margin-bottom: 8px; font-family: monospace; font-size: 13px; border: 1px solid #ffd8b3;
+        }
+        .telemetry-display {
+            display: flex; justify-content: space-around; background: #f4f5f7;
+            padding: 10px; border-radius: 10px; margin-bottom: 12px; font-family: monospace; font-size: 13px; border: 1px solid #e1e4e8;
         }
         .val { color: #d35400; font-weight: bold; }
+        .val-geo { color: #2b7de9; font-weight: bold; }
 
         /* Kontrol */
         .control-grid { display: flex; width: 100%; margin-bottom: 12px; align-items: center; justify-content: space-between; }
@@ -96,11 +101,16 @@
         <div class="video-overlay">🔴 LIVE CAM</div>
     </div>
 
-    <button class="refresh-video-btn" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO</button>
+    <button class="refresh-video-btn" onclick="forceReconnectVideo()">🔄 RECONNECT</button>
 
     <div class="data-display">
-        <div>RUDDER: <span id="txtArah" class="val">straight</span></div>
+        <div>KEMUDI: <span id="txtArah" class="val">straight</span></div>
         <div>THROTTLE: <span id="txtSpeed" class="val">0</span>% (<span id="txtStatusMotor" style="color: #d35400;">DIAM</span>)</div>
+    </div>
+
+    <div class="telemetry-display">
+        <div>ROLL: <span id="txtRoll" class="val-geo">0.0</span>°</div>
+        <div>PITCH: <span id="txtPitch" class="val-geo">0.0</span>°</div>
     </div>
 
     <div class="control-grid">
@@ -125,7 +135,8 @@
 <script>
     const BROKER_HOST = "broker.emqx.io";
     const BROKER_PORT = 8084; 
-    const TOPIC = "undip/aterkia/zidan/control";
+    const TOPIC_CONTROL = "undip/aterkia/zidan/control";
+    const TOPIC_TELEMETRY = "undip/aterkia/zidan/telemetry"; // Jalur tangkap data MPU
 
     let lastArah = "straight"; let lastSpeed = 50; let sendInterval = null;
     const statusLabel = document.getElementById("statusLabel");
@@ -153,11 +164,27 @@
         setTimeout(eksekusiKoneksiMQTT, 3000);
     };
 
+    // DAFTARKAN FUNGSI MENERIMA DATA MASUK (INCOMING TELEMETRY)
+    client.onMessageArrived = (message) => {
+        if (message.destinationName === TOPIC_TELEMETRY) {
+            const dataData = message.payloadString.split(",");
+            if (dataData.length === 2) {
+                document.getElementById("txtRoll").innerText = dataData[0];
+                document.getElementById("txtPitch").innerText = dataData[1];
+            }
+        }
+    };
+
     function eksekusiKoneksiMQTT() {
         statusLabel.innerText = "KONEKSI..."; statusLabel.className = "status";
         client.connect({
             useSSL: true, timeout: 5,
-            onSuccess: () => { statusLabel.innerText = "ONLINE"; statusLabel.className = "status connected"; },
+            onSuccess: () => { 
+                statusLabel.innerText = "ONLINE"; 
+                statusLabel.className = "status connected"; 
+                // Begitu terhubung, langsung subscribe ke jalur sensor Raspi
+                client.subscribe(TOPIC_TELEMETRY);
+            },
             onFailure: () => { setTimeout(eksekusiKoneksiMQTT, 5000); }
         });
     }
@@ -167,7 +194,7 @@
     function kirimDataMQTT(payload) { 
         if (client && client.isConnected()) { 
             const message = new Paho.MQTT.Message(payload);
-            message.destinationName = TOPIC;
+            message.destinationName = TOPIC_CONTROL;
             client.send(message); 
         } 
     }
@@ -220,7 +247,7 @@
                 var d = Math.sqrt(dx * dx + dy * dy);
                 
                 if (d > 50) { dx = (dx / d) * 50; }
-                nip.style.transform = "translate(" + dx + "px, 0px)"; // Kunci sumbu Y tetap 0 agar belok lurus presisi
+                nip.style.transform = "translate(" + dx + "px, 0px)";
                 var xA = "straight"; if (dx < -12) xA = "left"; else if (dx > 12) xA = "right";
                 if (cb["move"]) cb["move"](xA);
             };
