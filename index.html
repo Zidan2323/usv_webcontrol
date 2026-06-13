@@ -136,34 +136,42 @@
     let lastArah = "straight", lastSpeed = 50, sendInterval = null;
     const client = new Paho.MQTT.Client(BROKER, Number(PORT), "gcs_u_" + Math.random().toString(16).substr(2, 4));
 
+    // Inisialisasi variabel pelacak link global
     window.linkVideoGlobal = "about:blank";
 
     client.onMessageArrived = (msg) => {
         if (msg.destinationName === TOPIC_TELE) {
             const parts = msg.payloadString.split(",");
             if (parts.length === 4) {
-                // 1. Update data sensor terfilter EMA
+                // 1. Update data numerik sensor MPU terfilter EMA
                 document.getElementById("txtRoll").innerText = parseFloat(parts[0]).toFixed(1);
                 document.getElementById("txtPitch").innerText = parseFloat(parts[1]).toFixed(1);
                 document.getElementById("txtYawRate").innerText = parseFloat(parts[2]).toFixed(1);
                 
-                // 2. Pasang link video HLS Cloudflare otomatis
-                const cfUrl = parts[3];
+                // 2. Pemrosesan Link Video Dinamis Lintas Internet
+                const cfUrl = parts[3].trim();
                 if (cfUrl !== "about:blank" && cfUrl !== "") {
                     const linkFinal = cfUrl + "/cam/";
-                    const iframe = document.getElementById('camFrame');
-                    if (iframe.src === "about:blank" || iframe.src === "" || window.linkVideoGlobal !== linkFinal) {
+                    
+                    // Jika terdeteksi link baru dari kapal yang berbeda dengan link lama di memori halaman
+                    if (window.linkVideoGlobal !== linkFinal) {
                         window.linkVideoGlobal = linkFinal;
-                        iframe.src = linkFinal;
+                        
+                        // Suntikkan URL baru ke iframe ditambah token waktu bypass anti-cache browser HP
+                        document.getElementById('camFrame').src = linkFinal + "?t=" + Date.now();
                     }
                 }
             }
         }
     };
 
+    // Fungsi tombol RECONNECT dimodifikasi agar memaksa hancurkan cache IP Cloudflare lama
     function forceReconnectVideo() {
-        if (window.linkVideoGlobal !== "about:blank") {
+        if (window.linkVideoGlobal !== "about:blank" && window.linkVideoGlobal !== "") {
             document.getElementById('camFrame').src = window.linkVideoGlobal + "?t=" + Date.now();
+            console.log("Memaksa re-koneksi jaringan video baru ke: " + window.linkVideoGlobal);
+        } else {
+            console.log("Menunggu jabat tangan MQTT menyalurkan link dari kapal...");
         }
     }
 
