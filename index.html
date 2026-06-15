@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GCS Autonomous Surface Vehicle</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #1a1c1e; color: #e3e2e6; padding: 15px; }
@@ -12,9 +16,12 @@
         header h1 { font-size: 22px; color: #4791ff; text-transform: uppercase; letter-spacing: 2px; }
         .status-bar { display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 11px; margin-top: 5px; background-color: #ba1a1a; color: white; }
         .online { background-color: #006a4e; }
+        
+        /* Layout Grid Fleksibel Tiga Kolom Sematan Peta */
         .main-container { display: flex; flex-direction: column; gap: 15px; }
-        @media(min-width: 768px) { .main-container { flex-direction: row; } }
-        .panel { flex: 1; background-color: #24262a; border-radius: 12px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        @media(min-width: 992px) { .main-container { flex-direction: row; } }
+        
+        .panel { flex: 1; background-color: #24262a; border-radius: 12px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); min-width: 320px; }
         .panel-title { font-size: 14px; font-weight: bold; margin-bottom: 12px; color: #8cb4f9; border-left: 4px solid #4791ff; padding-left: 8px; }
         .video-wrapper { position: relative; width: 100%; padding-bottom: 75%; background-color: #000; border-radius: 8px; overflow: hidden; border: 1px solid #3f4752; }
         .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
@@ -33,6 +40,9 @@
         .btn-emergency { display: block; width: 100%; margin-top: 15px; padding: 15px; background-color: #ba1a1a; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 6px rgba(0,0,0,0.4); }
         .btn-emergency:hover { background-color: #ff1744; }
         .log-panel { margin-top: 15px; background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 10px; height: 90px; overflow-y: auto; font-family: monospace; font-size: 11px; color: #00ff66; }
+        
+        /* Style Tambahan untuk Wadah Peta */
+        #map { width: 100%; height: 320px; border: 1px solid #3f4752; border-radius: 8px; background-color: #1a1c1e; }
     </style>
 </head>
 <body>
@@ -50,6 +60,21 @@
                 <iframe id="camFrame" src="https://dastardly-ascent-verbalize.ngrok-free.dev/video_feed"></iframe>
             </div>
             <button class="btn-reconnect" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO STREAM</button>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">GEOSPATIAL REAL-TIME TRACKING MAP</div>
+            <div id="map"></div>
+            <div class="widget-grid" style="margin-top: 12px; margin-bottom: 0;">
+                <div class="widget-card" style="padding: 6px;">
+                    <div class="widget-label">Latitude</div>
+                    <div class="widget-value" style="font-size: 13px; color: #00ff66;"><span id="txtLat">0.000000</span></div>
+                </div>
+                <div class="widget-card" style="padding: 6px;">
+                    <div class="widget-label">Longitude</div>
+                    <div class="widget-value" style="font-size: 13px; color: #00ff66;"><span id="txtLon">0.000000</span></div>
+                </div>
+            </div>
         </div>
 
         <div class="panel">
@@ -105,12 +130,27 @@
             }
         }
 
+        // --- INISIALISASI ENGINE PETA DIGITAL LEAFLET (Default Waduk Kampus Tembalang) ---
+        const map = L.map('map').setView([-7.0522, 110.4377], 17);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Marker penunjuk posisi kapal
+        let markerKapal = L.marker([-7.0522, 110.4377]).addTo(map)
+            .bindPopup('<b>USV Research Vessel</b><br>Geospatial Telemetry Aktif.')
+            .openPopup();
+
+        // Array penampung jalur koordinat lintasan kapal
+        let koordinatJejak = [];
+        let garisLintasan = L.polyline(koordinatJejak, {color: '#ff7b00', weight: 4, opacity: 0.8}).addTo(map);
+
         // --- DATA JARINGAN NETWORK MQTT ---
         const BROKER_URL = "wss://broker.emqx.io:8084/mqtt"; 
         const TOPIC_CONTROL = "usv/control/navigation";
         const TOPIC_TELEMETRY = "usv/telemetry/sensors";
-        
-        // Tempel link baru di sini juga untuk fungsi tombol penyegar stream
         const LINK_VIDEO_STATIS = "https://dastardly-ascent-verbalize.ngrok-free.dev/video_feed";
 
         let currentSteerDirection = "straight";
@@ -134,13 +174,40 @@
             client.subscribe(TOPIC_TELEMETRY);
         });
 
+        // REVISI TOTAL UTK SINKRONISASI DATA SENSOR + KOORDINAT GPS DARI RASPI
         client.on('message', (topic, payload) => {
             if (topic === TOPIC_TELEMETRY) {
                 const parts = payload.toString().split(",");
-                if (parts.length === 3) {
+                
+                // Menerima paket utuh 5 parameter (Roll, Pitch, Yaw, Lat, Lon)
+                if (parts.length === 5) {
+                    // 1. Render data numerik sensor MPU
                     document.getElementById("txtRoll").innerText = parseFloat(parts[0]).toFixed(1);
                     document.getElementById("txtPitch").innerText = parseFloat(parts[1]).toFixed(1);
                     document.getElementById("txtYawRate").innerText = parseFloat(parts[2]).toFixed(1);
+                    
+                    // 2. Ekstraksi data geografis GPS
+                    const latKapal = parseFloat(parts[3]);
+                    const lonKapal = parseFloat(parts[4]);
+
+                    // Update indikator teks numerik koordinat
+                    document.getElementById("txtLat").innerText = latKapal.toFixed(6);
+                    document.getElementById("txtLon").innerText = lonKapal.toFixed(6);
+
+                    // 3. Plotting pergerakan ke peta jika modul GPS sudah mengunci satelit (Bukan 0.0)
+                    if (latKapal !== 0.0 && lonKapal !== 0.0) {
+                        const posisiBaru = [latKapal, lonKapal];
+
+                        // Geser posisi ikon kapal di peta secara real-time
+                        markerKapal.setLatLng(posisiBaru);
+
+                        // Tambahkan koordinat baru ke riwayat lintasan lalu gambar garisnya
+                        koordinatJejak.push(posisiBaru);
+                        garisLintasan.setLatLngs(koordinatJejak);
+
+                        // Kamera peta otomatis bergeser mengikuti pergerakan posisi kapal
+                        map.panTo(posisiBaru);
+                    }
                 }
             }
         });
@@ -200,7 +267,7 @@
             joyHandle.style.left = (deltaX + 55) + 'px';
 
             let arah = "straight";
-            if (deltaX < -20) arah = "left";
+            if (deltaX < -20) mesh = arah = "left";
             else if (deltaX > 20) arah = "right";
 
             if (currentSteerDirection !== arah) {
