@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-rotatedmarker@0.2.0/leaflet.rotatedMarker.min.js"></script>
+    
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #1a1c1e; color: #e3e2e6; padding: 15px; }
@@ -17,7 +19,6 @@
         .status-bar { display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 11px; margin-top: 5px; background-color: #ba1a1a; color: white; }
         .online { background-color: #006a4e; }
         
-        /* Layout Grid Fleksibel Tiga Kolom Sematan Peta */
         .main-container { display: flex; flex-direction: column; gap: 15px; }
         @media(min-width: 992px) { .main-container { flex-direction: row; } }
         
@@ -26,22 +27,25 @@
         .video-wrapper { position: relative; width: 100%; padding-bottom: 75%; background-color: #000; border-radius: 8px; overflow: hidden; border: 1px solid #3f4752; }
         .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
         .btn-reconnect { display: block; width: 100%; margin-top: 10px; padding: 10px; background-color: #334455; color: #ffffff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; text-align: center; }
+        
         .widget-grid { display: flex; gap: 10px; margin-bottom: 15px; }
         .widget-card { flex: 1; background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 12px; text-align: center; }
         .widget-label { font-size: 10px; text-transform: uppercase; color: #939099; margin-bottom: 3px; }
         .widget-value { font-size: 20px; font-weight: bold; color: #ffffff; }
         .unit { font-size: 11px; color: #4791ff; }
+        
         .control-container { display: flex; justify-content: space-around; align-items: center; background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 20px 10px; margin-top: 15px; }
         .throttle-box { display: flex; flex-direction: column; align-items: center; gap: 10px; }
         .throttle-slider { -webkit-appearance: none; appearance: none; width: 60px; height: 150px; background: #24262a; border-radius: 30px; border: 2px solid #3f4752; outline: none; writing-mode: bt-lr; -webkit-writing-mode: vertical-lr; direction: rtl; }
         .throttle-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 54px; height: 30px; border-radius: 15px; background: #ff7b00; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        
         .joystick-zone { width: 160px; height: 160px; background: radial-gradient(circle, #24262a 40%, #1a1c1e 100%); border: 2px dashed #ff7b00; border-radius: 50%; position: relative; display: flex; justify-content: center; align-items: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); user-select: none; touch-action: none; }
         .joystick-handle { width: 50px; height: 50px; background: radial-gradient(circle, #ff9d00 0%, #d45d00 100%); border-radius: 50%; position: absolute; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.6); user-select: none; touch-action: none; }
+        
         .btn-emergency { display: block; width: 100%; margin-top: 15px; padding: 15px; background-color: #ba1a1a; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 6px rgba(0,0,0,0.4); }
         .btn-emergency:hover { background-color: #ff1744; }
         .log-panel { margin-top: 15px; background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 10px; height: 90px; overflow-y: auto; font-family: monospace; font-size: 11px; color: #00ff66; }
         
-        /* Style Tambahan untuk Wadah Peta */
         #map { width: 100%; height: 320px; border: 1px solid #3f4752; border-radius: 8px; background-color: #1a1c1e; }
     </style>
 </head>
@@ -73,6 +77,10 @@
                 <div class="widget-card" style="padding: 6px;">
                     <div class="widget-label">Longitude</div>
                     <div class="widget-value" style="font-size: 13px; color: #00ff66;"><span id="txtLon">0.000000</span></div>
+                </div>
+                <div class="widget-card" style="padding: 6px;">
+                    <div class="widget-label">Heading (Compass)</div>
+                    <div class="widget-value" style="font-size: 13px; color: #ff7b00;"><span id="txtHeading">0.0</span><span class="unit">°</span></div>
                 </div>
             </div>
         </div>
@@ -130,7 +138,7 @@
             }
         }
 
-        // --- INISIALISASI ENGINE PETA DIGITAL LEAFLET (Default Waduk Kampus Tembalang) ---
+        // --- INISIALISASI ENGINE PETA DIGITAL LEAFLET ---
         const map = L.map('map').setView([-7.0522, 110.4377], 17);
         
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -138,12 +146,18 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        // Marker penunjuk posisi kapal
-        let markerKapal = L.marker([-7.0522, 110.4377]).addTo(map)
+        // Custom Icon Moncong Kapal Panah agar terlihat putarannya di waduk
+        const kapalIcon = L.divIcon({
+            html: `<div style="transform: rotate(0deg);"><span style="font-size:24px;">🚀</span></div>`,
+            className: 'custom-kapal-icon',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        let markerKapal = L.marker([-7.0522, 110.4377], {icon: kapalIcon}).addTo(map)
             .bindPopup('<b>USV Research Vessel</b><br>Geospatial Telemetry Aktif.')
             .openPopup();
 
-        // Array penampung jalur koordinat lintasan kapal
         let koordinatJejak = [];
         let garisLintasan = L.polyline(koordinatJejak, {color: '#ff7b00', weight: 4, opacity: 0.8}).addTo(map);
 
@@ -174,38 +188,43 @@
             client.subscribe(TOPIC_TELEMETRY);
         });
 
-        // REVISI TOTAL UTK SINKRONISASI DATA SENSOR + KOORDINAT GPS DARI RASPI
+        // DECODER PAKET TELEMETRI (Mendukung 5 data IMU+GPS atau 6 data dengan Kompas)
         client.on('message', (topic, payload) => {
             if (topic === TOPIC_TELEMETRY) {
                 const parts = payload.toString().split(",");
                 
-                // Menerima paket utuh 5 parameter (Roll, Pitch, Yaw, Lat, Lon)
-                if (parts.length === 5) {
-                    // 1. Render data numerik sensor MPU
+                if (parts.length >= 5) {
+                    // 1. Render Sensor MPU
                     document.getElementById("txtRoll").innerText = parseFloat(parts[0]).toFixed(1);
                     document.getElementById("txtPitch").innerText = parseFloat(parts[1]).toFixed(1);
                     document.getElementById("txtYawRate").innerText = parseFloat(parts[2]).toFixed(1);
                     
-                    // 2. Ekstraksi data geografis GPS
+                    // 2. Ekstraksi GPS
                     const latKapal = parseFloat(parts[3]);
                     const lonKapal = parseFloat(parts[4]);
 
-                    // Update indikator teks numerik koordinat
                     document.getElementById("txtLat").innerText = latKapal.toFixed(6);
                     document.getElementById("txtLon").innerText = lonKapal.toFixed(6);
 
-                    // 3. Plotting pergerakan ke peta jika modul GPS sudah mengunci satelit (Bukan 0.0)
+                    // 3. Ekstraksi Kompas / Heading (Jika ada parameter ke-6)
+                    let heading = 0.0;
+                    if (parts.length === 6) {
+                        heading = parseFloat(parts[5]);
+                        document.getElementById("txtHeading").innerText = heading.toFixed(1);
+                    }
+
+                    // Plotting rute riil
                     if (latKapal !== 0.0 && lonKapal !== 0.0) {
                         const posisiBaru = [latKapal, lonKapal];
-
-                        // Geser posisi ikon kapal di peta secara real-time
                         markerKapal.setLatLng(posisiBaru);
+                        
+                        // Putar ikon kapal panah di peta secara live!
+                        if (markerKapal.setRotationAngle) {
+                            markerKapal.setRotationAngle(heading);
+                        }
 
-                        // Tambahkan koordinat baru ke riwayat lintasan lalu gambar garisnya
                         koordinatJejak.push(posisiBaru);
                         garisLintasan.setLatLngs(koordinatJejak);
-
-                        // Kamera peta otomatis bergeser mengikuti pergerakan posisi kapal
                         map.panTo(posisiBaru);
                     }
                 }
@@ -232,27 +251,25 @@
 
         function kirimThrottle(val) {
             let statusTeks = "";
-            if (val == 50) {
-                statusTeks = "Netral (50%)";
-            } else if (val > 50) {
-                statusTeks = "Maju: " + (val - 50) * 2 + "%";
-            } else {
-                statusTeks = "Mundur: " + (50 - val) * 2 + "%";
-            }
-            document.getElementById("valThrottle").innerText = statusTeks;
+            if (val == 50) statusTeks = "Netral (50%)";
+            else if (val > 50) statusTeks = "Maju: " + (val - 50) * 2 + "%";
+            else statusTeks = "Mundur: " + (50 - val) * 2 + "%";
             
-            const posisiSteer = currentSteerDirection || "straight";
-            kirimPerintah(`${posisiSteer},${val}`);
+            document.getElementById("valThrottle").innerText = statusTeks;
+            kirimPerintah(`${currentSteerDirection},${val}`);
         }
 
         function kirimEmergencyStop() {
-            logKeConsole("🚨 EMERGENCY STOP DISBURKAN! MOTOR APUNG NETRAL.");
+            logKeConsole("🚨 EMERGENCY STOP DICETUSKAN! MOTOR NETRAL.");
             document.getElementById("throttleInput").value = 50;
             document.getElementById("valThrottle").innerText = "Netral (50%)";
+            currentSteerDirection = "straight";
+            document.getElementById("valSteer").innerText = "Kemudi: straight";
+            document.getElementById('joyHandle').style.left = '55px';
             kirimPerintah("stop,50");
         }
 
-        // --- SISTEM ENGINE JOYSTICK ---
+        // --- ENGINE JOYSTICK YANG SUDAH DIPERBAIKI (ANTI CRASH) ---
         const joyZone = document.getElementById('joyZone');
         const joyHandle = document.getElementById('joyHandle');
 
@@ -267,8 +284,8 @@
             joyHandle.style.left = (deltaX + 55) + 'px';
 
             let arah = "straight";
-            if (deltaX < -20) mesh = arah = "left";
-            else if (deltaX > 20) arah = "right";
+            if (deltaX < -18) arah = "left";
+            else if (deltaX > 18) arah = "right";
 
             if (currentSteerDirection !== arah) {
                 currentSteerDirection = arah;
