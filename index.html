@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GCS Autonomous Surface Vehicle</title>
-    
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/leaflet-rotatedmarker@0.2.0/leaflet.rotatedMarker.min.js"></script>
     
     <style>
@@ -15,8 +16,7 @@
         body { background-color: #1a1c1e; color: #e3e2e6; padding: 15px; }
         header { text-align: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #334455; }
         header h1 { font-size: 22px; color: #4791ff; text-transform: uppercase; letter-spacing: 2px; }
-        
-        .status-bar { display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 11px; margin-top: 5px; background-color: #ba1a1a; color: white; transition: background-color 0.3s; }
+        .status-bar { display: inline-block; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 11px; margin-top: 5px; background-color: #ba1a1a; color: white; }
         .online { background-color: #006a4e; }
         
         .main-container { display: flex; flex-direction: column; gap: 15px; }
@@ -24,227 +24,302 @@
         
         .panel { flex: 1; background-color: #24262a; border-radius: 12px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); min-width: 320px; }
         .panel-title { font-size: 14px; font-weight: bold; margin-bottom: 12px; color: #8cb4f9; border-left: 4px solid #4791ff; padding-left: 8px; }
+        .video-wrapper { position: relative; width: 100%; padding-bottom: 75%; background-color: #000; border-radius: 8px; overflow: hidden; border: 1px solid #3f4752; }
+        .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+        .btn-reconnect { display: block; width: 100%; margin-top: 10px; padding: 10px; background-color: #334455; color: #ffffff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; text-align: center; }
         
-        /* Video Wrapper */
-        .video-wrapper { position: relative; width: 100%; padding-bottom: 56.25%; background-color: #000; border-radius: 8px; overflow: hidden; border: 1px solid #3f4752; }
-        .video-wrapper video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-        
-        .btn-reconnect { display: block; width: 100%; margin-top: 10px; padding: 10px; background-color: #334455; color: #ffffff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; text-align: center; transition: background 0.2s; }
-        .btn-reconnect:hover { background-color: #445566; }
-        
-        /* Widget Grid */
-        .widget-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
-        .widget-card { background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 12px; text-align: center; }
+        .widget-grid { display: flex; gap: 10px; margin-bottom: 15px; }
+        .widget-card { flex: 1; background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 12px; text-align: center; }
         .widget-label { font-size: 10px; text-transform: uppercase; color: #939099; margin-bottom: 3px; }
-        .widget-value { font-size: 18px; font-weight: bold; color: #ffffff; }
+        .widget-value { font-size: 20px; font-weight: bold; color: #ffffff; }
         .unit { font-size: 11px; color: #4791ff; }
         
-        /* Map Container */
-        #map { width: 100%; height: 300px; border-radius: 8px; border: 1px solid #3f4752; margin-bottom: 15px; }
-        
-        /* Control Container */
-        .control-container { display: flex; justify-content: space-around; align-items: center; background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 20px 10px; }
+        .control-container { display: flex; justify-content: space-around; align-items: center; background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 20px 10px; margin-top: 15px; }
         .throttle-box { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .throttle-slider { -webkit-appearance: none; appearance: none; width: 60px; height: 150px; background: #24262a; border-radius: 30px; border: 2px solid #3f4752; outline: none; writing-mode: bt-lr; -webkit-writing-mode: vertical-lr; direction: rtl; }
+        .throttle-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 54px; height: 30px; border-radius: 15px; background: #ff7b00; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
         
-        /* Slider Vertical styling */
-        .throttle-slider { -webkit-appearance: none; appearance: none; width: 20px; height: 150px; background: #24262a; border-radius: 10px; border: 2px solid #3f4752; outline: none; writing-mode: vertical-lr; direction: rtl; }
-        .throttle-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 30px; height: 20px; border-radius: 5px; background: #ff7b00; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .joystick-zone { width: 160px; height: 160px; background: radial-gradient(circle, #24262a 40%, #1a1c1e 100%); border: 2px dashed #ff7b00; border-radius: 50%; position: relative; display: flex; justify-content: center; align-items: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); user-select: none; touch-action: none; }
+        .joystick-handle { width: 50px; height: 50px; background: radial-gradient(circle, #ff9d00 0%, #d45d00 100%); border-radius: 50%; position: absolute; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.6); user-select: none; touch-action: none; }
         
-        /* Joystick styling */
-        .joystick-zone { width: 150px; height: 150px; background: radial-gradient(circle, #24262a 40%, #1a1c1e 100%); border: 2px dashed #ff7b00; border-radius: 50%; position: relative; display: flex; justify-content: center; align-items: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); user-select: none; touch-action: none; }
-        .joystick-handle { width: 50px; height: 50px; background: radial-gradient(circle, #ff9d00 0%, #d45d00 100%); border-radius: 50%; position: absolute; box-shadow: 0 4px 8px rgba(0,0,0,0.6); cursor: pointer; left: 50px; top: 50px; touch-action: none; }
+        .btn-emergency { display: block; width: 100%; margin-top: 15px; padding: 15px; background-color: #ba1a1a; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 6px rgba(0,0,0,0.4); }
+        .btn-emergency:hover { background-color: #ff1744; }
+        .log-panel { margin-top: 15px; background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 10px; height: 90px; overflow-y: auto; font-family: monospace; font-size: 11px; color: #00ff66; }
+        
+        #map { width: 100%; height: 320px; border: 1px solid #3f4752; border-radius: 8px; background-color: #1a1c1e; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>GCS Autonomous Surface Vehicle</h1>
-        <div id="status-mqtt" class="status-bar">MQTT: OFFLINE</div>
+        <h1>USV Ground Control Station</h1>
+        <div id="statusMqtt" class="status-bar">DISCONNECTED</div>
     </header>
 
     <div class="main-container">
         
         <div class="panel">
-            <div class="panel-title">LIVE VIDEO STREAM</div>
+            <div class="panel-title">LIVE CAMERA MONITOR</div>
             <div class="video-wrapper">
-                <video id="remote-video" autoplay playsinline muted></video>
+                <iframe id="camFrame" src="https://dastardly-ascent-verbalize.ngrok-free.dev/video_feed"></iframe>
             </div>
-            <button class="btn-reconnect" onclick="connectWebRTC()">RECONNECT VIDEO</button>
-            
-            <div class="panel-title" style="margin-top: 20px;">MANUAL CONTROL</div>
-            <div class="control-container">
-                <div class="throttle-box">
-                    <span class="widget-label">Throttle</span>
-                    <input type="range" class="throttle-slider" id="throttle" min="0" max="100" value="0" oninput="sendControlData()">
-                    <span id="throttle-val" class="unit">0%</span>
+            <button class="btn-reconnect" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO STREAM</button>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">GEOSPATIAL REAL-TIME TRACKING MAP</div>
+            <div id="map"></div>
+            <div class="widget-grid" style="margin-top: 12px; margin-bottom: 0;">
+                <div class="widget-card" style="padding: 6px;">
+                    <div class="widget-label">Latitude</div>
+                    <div class="widget-value" style="font-size: 13px; color: #00ff66;"><span id="txtLat">0.000000</span></div>
                 </div>
-                
-                <div class="throttle-box">
-                    <span class="widget-label">Steering</span>
-                    <div class="joystick-zone" id="joyZone">
-                        <div class="joystick-handle" id="joyHandle"></div>
-                    </div>
-                    <span id="steering-val" class="unit">Center (0)</span>
+                <div class="widget-card" style="padding: 6px;">
+                    <div class="widget-label">Longitude</div>
+                    <div class="widget-value" style="font-size: 13px; color: #00ff66;"><span id="txtLon">0.000000</span></div>
+                </div>
+                <div class="widget-card" style="padding: 6px;">
+                    <div class="widget-label">Heading (Compass)</div>
+                    <div class="widget-value" style="font-size: 13px; color: #ff7b00;"><span id="txtHeading">0.0</span><span class="unit">°</span></div>
                 </div>
             </div>
         </div>
 
         <div class="panel">
-            <div class="panel-title">TELEMETRY DATA</div>
+            <div class="panel-title">REAL-TIME TELEMETRY (MPU-6050)</div>
             <div class="widget-grid">
                 <div class="widget-card">
-                    <div class="widget-label">Kecepatan</div>
-                    <div class="widget-value" id="val-speed">0.0</div>
-                    <div class="unit">Knot</div>
+                    <div class="widget-label">Roll</div>
+                    <div class="widget-value"><span id="txtRoll">0.0</span><span class="unit">°</span></div>
                 </div>
                 <div class="widget-card">
-                    <div class="widget-label">Baterai</div>
-                    <div class="widget-value" id="val-battery">0</div>
-                    <div class="unit">%</div>
+                    <div class="widget-label">Pitch</div>
+                    <div class="widget-value"><span id="txtPitch">0.0</span><span class="unit">°</span></div>
                 </div>
                 <div class="widget-card">
-                    <div class="widget-label">Heading</div>
-                    <div class="widget-value" id="val-heading">0°</div>
-                    <div class="unit">Utara</div>
+                    <div class="widget-label">Yaw Rate</div>
+                    <div class="widget-value"><span id="txtYawRate">0.0</span><span class="unit">°/s</span></div>
                 </div>
             </div>
 
-            <div class="panel-title">ASV POSITION MAP</div>
-            <div id="map"></div>
+            <div class="panel-title" style="margin-top: 15px;">MANUAL ACTUATOR CONTROL</div>
+            
+            <div class="control-container">
+                <div class="throttle-box">
+                    <span style="font-size: 11px; font-weight: bold; color: #ff7b00;">THROTTLE</span>
+                    <input type="range" min="0" max="100" value="50" class="throttle-slider" id="throttleInput" oninput="kirimThrottle(this.value)">
+                    <span id="valThrottle" style="font-size: 12px; font-weight: bold; color: #00ff66;">Netral (50%)</span>
+                </div>
+
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                    <span style="font-size: 11px; font-weight: bold; color: #ff7b00;">STEERING CONTROL</span>
+                    <div class="joystick-zone" id="joyZone">
+                        <div class="joystick-handle" id="joyHandle" style="top: 55px; left: 55px;"></div>
+                    </div>
+                    <span id="valSteer" style="font-size: 11px; font-weight: bold; color: #8cb4f9;">Kemudi: straight</span>
+                </div>
+            </div>
+
+            <button class="btn-emergency" onclick="kirimEmergencyStop()">🚨 EMERGENCY STOP</button>
+
+            <div id="consoleLog" class="log-panel">Menunggu koneksi dari broker aman...<br></div>
         </div>
 
     </div>
 
-    <script>
-        // ==========================================
-        // 1. KONFIGURASI MQTT
-        // ==========================================
-        const broker = 'wss://broker.hivemq.com:8000/mqtt'; // Menggunakan WebSocket secure broker publik
-        const client = mqtt.connect(broker);
-        const topicTelemetry = "asv/telemetry";
-        const topicControl = "asv/control";
+    <script type="text/javascript">
+        const logBox = document.getElementById("consoleLog");
+        
+        function logKeConsole(pesan) {
+            if (logBox) {
+                const waktu = new Date().toLocaleTimeString();
+                logBox.innerHTML += [${waktu}] ${pesan}<br>;
+                logBox.scrollTop = logBox.scrollHeight; 
+            }
+        }
 
-        const statusMqtt = document.getElementById('status-mqtt');
+        // --- INISIALISASI ENGINE PETA DIGITAL LEAFLET ---
+        const map = L.map('map').setView([-7.0522, 110.4377], 17);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Custom Icon Moncong Kapal Panah agar terlihat putarannya di waduk
+        const kapalIcon = L.divIcon({
+            html: <div style="transform: rotate(0deg);"><span style="font-size:24px;">🚀</span></div>,
+            className: 'custom-kapal-icon',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        let markerKapal = L.marker([-7.0522, 110.4377], {icon: kapalIcon}).addTo(map)
+            .bindPopup('<b>USV Research Vessel</b><br>Geospatial Telemetry Aktif.')
+            .openPopup();
+
+        let koordinatJejak = [];
+        let garisLintasan = L.polyline(koordinatJejak, {color: '#ff7b00', weight: 4, opacity: 0.8}).addTo(map);
+
+        // --- DATA JARINGAN NETWORK MQTT ---
+        const BROKER_URL = "wss://broker.emqx.io:8084/mqtt"; 
+        const TOPIC_CONTROL = "usv/control/navigation";
+        const TOPIC_TELEMETRY = "usv/telemetry/sensors";
+        const LINK_VIDEO_STATIS = "https://dastardly-ascent-verbalize.ngrok-free.dev/video_feed";
+
+        let currentSteerDirection = "straight";
+        let isDragging = false;
+
+        logKeConsole("Menghubungkan ke Broker Aman EMQX via SSL/TLS Port 8084...");
+
+        const client = mqtt.connect(BROKER_URL, {
+            clientId: "usv_gcs_client_" + Math.random().toString(16).substr(2, 8),
+            clean: true,
+            connectTimeout: 4000
+        });
 
         client.on('connect', () => {
-            statusMqtt.innerText = "MQTT: ONLINE";
-            statusMqtt.classList.add('online');
-            client.subscribe(topicTelemetry);
+            logKeConsole("✅ KONEKSI TELEMETRI GLOBAL ONLINE SAKTI!");
+            const statusBar = document.getElementById("statusMqtt");
+            if (statusBar) {
+                statusBar.innerText = "ONLINE";
+                statusBar.className = "status-bar online";
+            }
+            client.subscribe(TOPIC_TELEMETRY);
         });
 
-        client.on('close', () => {
-            statusMqtt.innerText = "MQTT: OFFLINE";
-            statusMqtt.classList.remove('online');
-        });
-
-        client.on('message', (topic, message) => {
-            if (topic === topicTelemetry) {
-                try {
-                    const data = JSON.parse(message.toString());
-                    document.getElementById('val-speed').innerText = data.speed.toFixed(1);
-                    document.getElementById('val-battery').innerText = data.battery;
-                    document.getElementById('val-heading').innerText = data.heading + "°";
+        // DECODER PAKET TELEMETRI (Mendukung 5 data IMU+GPS atau 6 data dengan Kompas)
+        client.on('message', (topic, payload) => {
+            if (topic === TOPIC_TELEMETRY) {
+                const parts = payload.toString().split(",");
+                
+                if (parts.length >= 5) {
+                    // 1. Render Sensor MPU
+                    document.getElementById("txtRoll").innerText = parseFloat(parts[0]).toFixed(1);
+                    document.getElementById("txtPitch").innerText = parseFloat(parts[1]).toFixed(1);
+                    document.getElementById("txtYawRate").innerText = parseFloat(parts[2]).toFixed(1);
                     
-                    // Update Posisi Kapal di Peta
-                    if (data.lat && data.lng) {
-                        const newPos = [data.lat, data.lng];
-                        asvMarker.setLatLng(newPos);
-                        asvMarker.setRotationAngle(data.heading);
-                        map.setView(newPos);
+                    // 2. Ekstraksi GPS
+                    const latKapal = parseFloat(parts[3]);
+                    const lonKapal = parseFloat(parts[4]);
+
+                    document.getElementById("txtLat").innerText = latKapal.toFixed(6);
+                    document.getElementById("txtLon").innerText = lonKapal.toFixed(6);
+
+                    // 3. Ekstraksi Kompas / Heading (Jika ada parameter ke-6)
+                    let heading = 0.0;
+                    if (parts.length === 6) {
+                        heading = parseFloat(parts[5]);
+                        document.getElementById("txtHeading").innerText = heading.toFixed(1);
                     }
-                } catch (e) {
-                    console.error("Format data telemetri salah", e);
+
+                    // Plotting rute riil
+                    if (latKapal !== 0.0 && lonKapal !== 0.0) {
+                        const posisiBaru = [latKapal, lonKapal];
+                        markerKapal.setLatLng(posisiBaru);
+                        
+                        // Putar ikon kapal panah di peta secara live!
+                        if (markerKapal.setRotationAngle) {
+                            markerKapal.setRotationAngle(heading);
+                        }
+
+                        koordinatJejak.push(posisiBaru);
+                        garisLintasan.setLatLngs(koordinatJejak);
+                        map.panTo(posisiBaru);
+                    }
                 }
             }
         });
 
-        // ==========================================
-        // 2. KONFIGURASI LEAFLET MAP
-        // ==========================================
-        // Inisialisasi Peta (Default koordinat Jakarta/laut sekitarnya)
-        const map = L.map('map').setView([-6.12, 106.8], 13);
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+        client.on('close', () => {
+            const statusBar = document.getElementById("statusMqtt");
+            if (statusBar) {
+                statusBar.innerText = "DISCONNECTED";
+                statusBar.className = "status-bar";
+            }
+        });
 
-        // Custom Marker Kapal (Gunakan gambar panah atau kapal jika ada)
-        const asvMarker = L.marker([-6.12, 106.8], {
-            rotationAngle: 0,
-            rotationOrigin: 'center center'
-        }).addTo(map).bindPopup("Posisi ASV");
+        client.on('error', (err) => {
+            logKeConsole("❌ Gagal Jabat Tangan Enkripsi: " + err);
+        });
 
-        // ==========================================
-        // 3. KONTROL INPUT (THROTTLE & JOYSTICK)
-        // ==========================================
-        let steeringValue = 0; // -100 (Kiri) sampai 100 (Kanan)
-
-        function sendControlData() {
-            const throttleValue = document.getElementById('throttle').value;
-            document.getElementById('throttle-val').innerText = throttleValue + "%";
-            
-            const payload = JSON.stringify({
-                throttle: parseInt(throttleValue),
-                steering: parseInt(steeringValue)
-            });
-            
-            if (client.connected) {
-                client.publish(topicControl, payload);
+        function kirimPerintah(stringPerintah) {
+            if (client && client.connected) {
+                client.publish(TOPIC_CONTROL, stringPerintah);
             }
         }
 
-        // Logic Joystick Virtual Dasar
+        function kirimThrottle(val) {
+            let statusTeks = "";
+            if (val == 50) statusTeks = "Netral (50%)";
+            else if (val > 50) statusTeks = "Maju: " + (val - 50) * 2 + "%";
+            else statusTeks = "Mundur: " + (50 - val) * 2 + "%";
+            
+            document.getElementById("valThrottle").innerText = statusTeks;
+            kirimPerintah(${currentSteerDirection},${val});
+        }
+
+        function kirimEmergencyStop() {
+            logKeConsole("🚨 EMERGENCY STOP DICETUSKAN! MOTOR NETRAL.");
+            document.getElementById("throttleInput").value = 50;
+            document.getElementById("valThrottle").innerText = "Netral (50%)";
+            currentSteerDirection = "straight";
+            document.getElementById("valSteer").innerText = "Kemudi: straight";
+            document.getElementById('joyHandle').style.left = '55px';
+            kirimPerintah("stop,50");
+        }
+
+        // --- ENGINE JOYSTICK YANG SUDAH DIPERBAIKI (ANTI CRASH) ---
         const joyZone = document.getElementById('joyZone');
         const joyHandle = document.getElementById('joyHandle');
-        let isDragging = false;
 
-        joyHandle.addEventListener('mousedown', startDrag);
-        joyHandle.addEventListener('touchstart', startDrag);
-        window.addEventListener('mousemove', drag);
-        window.addEventListener('touchmove', drag);
-        window.addEventListener('mouseup', endDrag);
-        window.addEventListener('touchend', endDrag);
-
-        function startDrag(e) { isDragging = true; }
-
-        function drag(e) {
-            if (!isDragging) return;
+        function handleSteeringMove(clientX) {
             const rect = joyZone.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const centerX = rect.left + rect.width / 2;
             
-            // Hitung posisi relatif X di dalam lingkaran area joystick
-            let x = clientX - rect.left - rect.width / 2;
-            const maxRadius = rect.width / 2 - 25; // Potong radius handle
+            let deltaX = clientX - centerX;
+            if (deltaX < -55) deltaX = -55;
+            if (deltaX > 55) deltaX = 55;
 
-            // Batasi agar tidak keluar lingkaran secara horizontal saja (X-axis steering)
-            if (x > maxRadius) x = maxRadius;
-            if (x < -maxRadius) x = -maxRadius;
+            joyHandle.style.left = (deltaX + 55) + 'px';
 
-            joyHandle.style.left = (x + rect.width / 2 - 25) + "px";
-            
-            // Konversi nilai X menjadi range -100 sampai 100
-            steeringValue = Math.round((x / maxRadius) * 100);
-            document.getElementById('steering-val').innerText = steeringValue > 0 ? `Kanan (${steeringValue})` : steeringValue < 0 ? `Kiri (${steeringValue})` : "Center (0)";
-            
-            sendControlData();
+            let arah = "straight";
+            if (deltaX < -18) arah = "left";
+            else if (deltaX > 18) arah = "right";
+
+            if (currentSteerDirection !== arah) {
+                currentSteerDirection = arah;
+                document.getElementById("valSteer").innerText = "Kemudi: " + arah;
+                const currentThrottle = document.getElementById("throttleInput").value;
+                kirimPerintah(${arah},${currentThrottle});
+            }
         }
 
-        function endDrag() {
+        function resetJoystickPosition() {
             if (!isDragging) return;
             isDragging = false;
-            // Kembalikan ke posisi tengah (auto-center)
-            joyHandle.style.left = "50px";
-            steeringValue = 0;
-            document.getElementById('steering-val').innerText = "Center (0)";
-            sendControlData();
+            joyHandle.style.transition = "left 0.2s ease-out"; 
+            joyHandle.style.left = '55px';
+            
+            if (currentSteerDirection !== "straight") {
+                currentSteerDirection = "straight";
+                document.getElementById("valSteer").innerText = "Kemudi: straight";
+                const currentThrottle = document.getElementById("throttleInput").value;
+                kirimPerintah(straight,${currentThrottle});
+            }
         }
 
-        // ==========================================
-        // 4. PLACEHOLDER WEBRTC STREAMING
-        // ==========================================
-        function connectWebRTC() {
-            console.log("Mencoba menghubungkan kembali WebRTC Stream...");
-            alert("Fungsi WebRTC Signaling perlu diintegrasikan dengan WebRTC server Anda (seperti Janus, GStreamer, atau Mediasoup).");
+        joyZone.addEventListener('mousedown', (e) => { e.preventDefault(); isDragging = true; joyHandle.style.transition = "none"; handleSteeringMove(e.clientX); });
+        window.addEventListener('mousemove', (e) => { if (isDragging) handleSteeringMove(e.clientX); });
+        window.addEventListener('mouseup', resetJoystickPosition);
+
+        joyZone.addEventListener('touchstart', (e) => { isDragging = true; joyHandle.style.transition = "none"; handleSteeringMove(e.touches[0].clientX); });
+        joyZone.addEventListener('touchmove', (e) => { if (isDragging) { e.preventDefault(); handleSteeringMove(e.touches[0].clientX); } });
+        joyZone.addEventListener('touchend', resetJoystickPosition);
+
+        function forceReconnectVideo() {
+            document.getElementById('camFrame').src = LINK_VIDEO_STATIS + "?t=" + Date.now();
+            logKeConsole("🔄 Menyegarkan jalur video feed...");
         }
     </script>
 </body>
