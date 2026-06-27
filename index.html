@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GCS Autonomous Surface Vehicle</title>
+    <title>GCS Adittia JMK</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -133,7 +133,7 @@
         function logKeConsole(pesan) {
             if (logBox) {
                 const waktu = new Date().toLocaleTimeString();
-                logBox.innerHTML += [${waktu}] ${pesan}<br>;
+                logBox.innerHTML += `[${waktu}] ${pesan}<br>`;
                 logBox.scrollTop = logBox.scrollHeight; 
             }
         }
@@ -148,7 +148,7 @@
 
         // Custom Icon Moncong Kapal Panah agar terlihat putarannya di waduk
         const kapalIcon = L.divIcon({
-            html: <div style="transform: rotate(0deg);"><span style="font-size:24px;">🚀</span></div>,
+            html: `<div style="transform: rotate(0deg);"><span style="font-size:24px;">🚀</span></div>`,
             className: 'custom-kapal-icon',
             iconSize: [30, 30],
             iconAnchor: [15, 15]
@@ -256,7 +256,7 @@
             else statusTeks = "Mundur: " + (50 - val) * 2 + "%";
             
             document.getElementById("valThrottle").innerText = statusTeks;
-            kirimPerintah(${currentSteerDirection},${val});
+            kirimPerintah(`${currentSteerDirection},${val}`);
         }
 
         function kirimEmergencyStop() {
@@ -291,7 +291,7 @@
                 currentSteerDirection = arah;
                 document.getElementById("valSteer").innerText = "Kemudi: " + arah;
                 const currentThrottle = document.getElementById("throttleInput").value;
-                kirimPerintah(${arah},${currentThrottle});
+                kirimPerintah(`${arah},${currentThrottle}`);
             }
         }
 
@@ -305,7 +305,7 @@
                 currentSteerDirection = "straight";
                 document.getElementById("valSteer").innerText = "Kemudi: straight";
                 const currentThrottle = document.getElementById("throttleInput").value;
-                kirimPerintah(straight,${currentThrottle});
+                kirimPerintah(`straight,${currentThrottle}`);
             }
         }
 
