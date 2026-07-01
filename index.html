@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GCS Adittia JMK</title>
+    <title>TA USV - Teknik Perkapalan</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -61,7 +61,7 @@
         <div class="panel">
             <div class="panel-title">LIVE CAMERA MONITOR</div>
             <div class="video-wrapper">
-                <iframe id="camFrame" src="https://dastardly-ascent-verbalize.ngrok-free.dev/video_feed"></iframe>
+                <iframe id="camFrame" src="https://3F1lxCLIRxamdk7yK5PN7C1YB3x_37eEKh6ecXdfHz4EG1UVF.ngrok-free.dev/video_feed"></iframe>
             </div>
             <button class="btn-reconnect" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO STREAM</button>
         </div>
@@ -165,7 +165,7 @@
         const BROKER_URL = "wss://broker.emqx.io:8084/mqtt"; 
         const TOPIC_CONTROL = "usv/control/navigation";
         const TOPIC_TELEMETRY = "usv/telemetry/sensors";
-        const LINK_VIDEO_STATIS = "https://dastardly-ascent-verbalize.ngrok-free.dev/video_feed";
+        const LINK_VIDEO_STATIS = "https://3F1lxCLIRxamdk7yK5PN7C1YB3x_37eEKh6ecXdfHz4EG1UVF.ngrok-free.dev/video_feed";
 
         let currentSteerDirection = "straight";
         let isDragging = false;
