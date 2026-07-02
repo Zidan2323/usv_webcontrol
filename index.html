@@ -249,8 +249,6 @@
             logKeConsole("❌ Gagal Jabat Tangan Enkripsi: " + err);
         });
 
-        function credentials() { return true; }
-
         function kirimPerintah(stringPerintah) {
             if (client && client.connected) {
                 client.publish(TOPIC_CONTROL, stringPerintah);
@@ -339,7 +337,7 @@
         }
 
         // ==================================================================
-        // 🎮 ENGINE KONTROL STIK PS (GAMEPAD API ADAPTIF)
+        // 🎮 ENGINE KONTROL STIK PS (GAMEPAD API)
         // ==================================================================
         let statusGamepadAktif = false;
         let lockMekanikStik = false; // Status pemutus stik (Toggle via START)
@@ -363,7 +361,7 @@
             const gp = gamepads[0]; 
 
             if (gp) {
-                // --- LOGIKA TOMBOL START (INDEX BUTTON 9) SEBAGAI INTERRUPT/DISCONNECT TOGGLE ---
+                // --- LOGIKA TOMBOL START (INDEX BUTTON 9) SEBAGAI INTERRUPT ON/OFF STIK ---
                 let tombolStartDitekan = gp.buttons[9].pressed;
                 if (tombolStartDitekan && !statusTombolStartSebelumnya) {
                     lockMekanikStik = !lockMekanikStik; // Balik status lock
@@ -382,23 +380,15 @@
                 }
                 statusTombolStartSebelumnya = tombolStartDitekan;
 
-                // Jika sedang dalam status terputus (lock), abaikan pembacaan analog throttle & steering
+                // Jika stik tidak di-lock, jalankan pembacaan analog asli
                 if (!lockMekanikStik) {
-                    
-                    // 1. ADAPTIF THROTTLE MENGGUNAKAN L2 DAN R2
-                    // Nilai value berkisar dari 0.0 (Dilepas) hingga 1.0 (Ditekan Penuh)
-                    let remL2 = gp.buttons[6].value; 
-                    let gasR2 = gp.buttons[7].value; 
-                    
-                    let nilaiSliderThrottle = 50; // Default Netral
+                    // 1. ANALOG KIRI (Sumbu Vertikal - axes[1]) -> THROTTLE (GAS)
+                    let axisThrottle = gp.axes[1]; 
+                    if (Math.abs(axisThrottle) < 0.1) axisThrottle = 0; // Filter deadzone
 
-                    if (gasR2 > 0.05) {
-                        // Maju adaptif: Dari rentang 50 s.d 100
-                        nilaiSliderThrottle = 50 + Math.round(gasR2 * 50);
-                    } else if (remL2 > 0.05) {
-                        // Mundur adaptif: Dari rentang 50 turun s.d 0
-                        nilaiSliderThrottle = 50 - Math.round(remL2 * 50);
-                    }
+                    // Konversi sumbu vertikal (-1 s.d 1) menjadi rentang slider 0-100%
+                    // Dibalik arahnya agar: Atas = 100 (Maju), Bawah = 0 (Mundur), Tengah = 50 (Netral)
+                    let nilaiSliderThrottle = Math.round(((axisThrottle * -1) + 1) * 50);
 
                     const throttleInputDom = document.getElementById("throttleInput");
                     if (throttleInputDom && throttleInputDom.value != nilaiSliderThrottle) {
@@ -406,8 +396,8 @@
                         kirimThrottle(nilaiSliderThrottle); 
                     }
 
-                    // 2. STEERING CONTROL PINDAH KE ANALOG KIRI (Sumbu Horizontal - axes[0])
-                    let axisSteer = gp.axes[0]; 
+                    // 2. ANALOG KANAN (Sumbu Horizontal - axes[2] atau axes[3]) -> STEERING (KEMUDI)
+                    let axisSteer = gp.axes[2]; 
                     if (Math.abs(axisSteer) < 0.1) axisSteer = 0; // Filter deadzone
 
                     let arahKemudiBaru = "straight";
@@ -417,12 +407,14 @@
                         arahKemudiBaru = "right";
                     }
 
+                    // Sinkronisasi komponen joystick visual & pengiriman data MQTT jika arah bergeser
                     if (currentSteerDirection !== arahKemudiBaru) {
                         currentSteerDirection = arahKemudiBaru;
                         document.getElementById("valSteer").innerText = "Kemudi: " + arahKemudiBaru;
                         
+                        // Gerakkan bulatan handle joystick visual di web mengikuti stik secara real-time
                         if (joyHandle) {
-                            let posisiXVisual = axisSteer * 55; 
+                            let posisiXVisual = axisSteer * 55; // Batas mekanis 55px kiri/kanan di style CSS
                             joyHandle.style.left = (posisiXVisual + 55) + 'px';
                         }
 
@@ -433,6 +425,7 @@
                 }
             }
 
+            // Loop pembacaan secara kontinu memanfaatkan frame browser
             requestAnimationFrame(bacaInputGamepad);
         }
     </script>
