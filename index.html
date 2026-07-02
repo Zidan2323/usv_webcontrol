@@ -200,18 +200,16 @@
             client.subscribe(TOPIC_TELEMETRY);
         });
 
-        // 🛠️ BUG KODE WEB DIPERBAIKI DI SINI 
         client.on('message', (topic, payload) => {
             if (topic === TOPIC_TELEMETRY) {
                 const parts = payload.toString().split(",");
                 
-                // Pastikan menerima data lengkap dari Python (Roll, Pitch, Compass, Lat, Lon)
                 if (parts.length >= 5) {
                     // 1. Render Sensor MPU Roll & Pitch
                     document.getElementById("txtRoll").innerText = parseFloat(parts[0]).toFixed(1);
                     document.getElementById("txtPitch").innerText = parseFloat(parts[1]).toFixed(1);
                     
-                    // 2. Render Compass (Dari Python, urutan Compass ada di indeks ke-2)
+                    // 2. Render Compass
                     let heading = parseFloat(parts[2]);
                     document.getElementById("txtCompass").innerText = heading.toFixed(1);
 
@@ -227,7 +225,6 @@
                         const posisiBaru = [latKapal, lonKapal];
                         markerKapal.setLatLng(posisiBaru);
                         
-                        // Rotasi Ikon (jika diperlukan suatu saat nanti)
                         if (markerKapal.setRotationAngle) {
                             markerKapal.setRotationAngle(heading);
                         }
@@ -337,6 +334,76 @@
         function forceReconnectVideo() {
             document.getElementById('camFrame').src = LINK_VIDEO_STATIS + "?t=" + Date.now();
             logKeConsole("🔄 Menyegarkan jalur video feed...");
+        }
+
+        // ==================================================================
+        // 🎮 ENGINE KONTROL STIK PS (GAMEPAD API)
+        // ==================================================================
+        let statusGamepadAktif = false;
+
+        window.addEventListener("gamepadconnected", (e) => {
+            logKeConsole("Gamepad terhubung: " + e.gamepad.id);
+            statusGamepadAktif = true;
+            bacaInputGamepad();
+        });
+
+        window.addEventListener("gamepaddisconnected", (e) => {
+            logKeConsole("Gamepad terputus: " + e.gamepad.id);
+            statusGamepadAktif = false;
+        });
+
+        function bacaInputGamepad() {
+            if (!statusGamepadAktif) return;
+
+            const gamepads = navigator.getGamepads();
+            const gp = gamepads[0]; 
+
+            if (gp) {
+                // 1. ANALOG KIRI (Sumbu Vertikal - axes[1]) -> THROTTLE (GAS)
+                let axisThrottle = gp.axes[1]; 
+                if (Math.abs(axisThrottle) < 0.1) axisThrottle = 0; // Filter deadzone
+
+                // Konversi sumbu vertikal (-1 s.d 1) menjadi rentang slider 0-100%
+                // Dibalik arahnya agar: Atas = 100 (Maju), Bawah = 0 (Mundur), Tengah = 50 (Netral)
+                let nilaiSliderThrottle = Math.round(((axisThrottle * -1) + 1) * 50);
+
+                const throttleInputDom = document.getElementById("throttleInput");
+                if (throttleInputDom && throttleInputDom.value != nilaiSliderThrottle) {
+                    throttleInputDom.value = nilaiSliderThrottle;
+                    kirimThrottle(nilaiSliderThrottle); 
+                }
+
+                // 2. ANALOG KANAN (Sumbu Horizontal - axes[2] atau axes[3]) -> STEERING (KEMUDI)
+                // Default stik PS standar menggunakan axes[2] untuk horizontal analog kanan
+                let axisSteer = gp.axes[2]; 
+                if (Math.abs(axisSteer) < 0.1) axisSteer = 0; // Filter deadzone
+
+                let arahKemudiBaru = "straight";
+                if (axisSteer < -0.3) {
+                    arahKemudiBaru = "left";
+                } else if (axisSteer > 0.3) {
+                    arahKemudiBaru = "right";
+                }
+
+                // Sinkronisasi komponen joystick visual & pengiriman data MQTT jika arah bergeser
+                if (currentSteerDirection !== arahKemudiBaru) {
+                    currentSteerDirection = arahKemudiBaru;
+                    document.getElementById("valSteer").innerText = "Kemudi: " + arahKemudiBaru;
+                    
+                    // Gerakkan bulatan handle joystick visual di web mengikuti stik secara real-time
+                    if (joyHandle) {
+                        let posisiXVisual = axisSteer * 55; // Batas mekanis 55px kiri/kanan di style CSS
+                        joyHandle.style.left = (posisiXVisual + 55) + 'px';
+                    }
+
+                    logKeConsole(`TX STEERING: Gamepad mengubah kemudi -> ${arahKemudiBaru}`);
+                    const currentThrottle = document.getElementById("throttleInput").value;
+                    kirimPerintah(`${arahKemudiBaru},${currentThrottle}`);
+                }
+            }
+
+            // Loop pembacaan secara kontinu memanfaatkan frame browser
+            requestAnimationFrame(bacaInputGamepad);
         }
     </script>
 </body>
