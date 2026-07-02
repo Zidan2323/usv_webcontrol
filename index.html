@@ -114,6 +114,9 @@
                 </div>
             </div>
 
+            <!-- Tombol Kalibrasi / Reset Compass -->
+            <button class="btn-reconnect" style="background-color: #3f4752; margin-top: 0; margin-bottom: 15px;" onclick="kirimResetCompass()">🔄 RESET / KALIBRASI UTARA</button>
+
             <div class="panel-title" style="margin-top: 15px;">MANUAL ACTUATOR CONTROL</div>
             
             <div class="control-container">
@@ -256,6 +259,11 @@
             if (client && client.connected) {
                 client.publish(TOPIC_CONTROL, stringPerintah);
             }
+        }
+
+        function kirimResetCompass() {
+            logKeConsole("TX COMPASS: Mengirim perintah kalibrasi utara...");
+            kirimPerintah("reset_compass,50"); 
         }
 
         function kirimThrottle(val) {
