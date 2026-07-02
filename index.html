@@ -265,12 +265,12 @@
             else statusTeks = "Mundur: " + (50 - val) * 2 + "%";
             
             document.getElementById("valThrottle").innerText = statusTeks;
-            logKeConsole(`⚡ TX THROTTLE: ${statusTeks} (${val})`);
+            logKeConsole(`TX THROTTLE: ${statusTeks} (${val})`);
             kirimPerintah(`${currentSteerDirection},${val}`);
         }
 
         function kirimEmergencyStop() {
-            logKeConsole("🚨 EMERGENCY STOP DICETUSKAN! MOTOR NETRAL.");
+            logKeConsole("EMERGENCY STOP DICETUSKAN! MOTOR NETRAL.");
             document.getElementById("throttleInput").value = 50;
             document.getElementById("valThrottle").innerText = "Netral (50%)";
             currentSteerDirection = "straight";
@@ -301,7 +301,7 @@
                 currentSteerDirection = arah;
                 document.getElementById("valSteer").innerText = "Kemudi: " + arah;
                 const currentThrottle = document.getElementById("throttleInput").value;
-                logKeConsole(`☸️ TX STEERING: Kemudi berubah ke -> ${arah}`);
+                logKeConsole(`TX STEERING: Kemudi berubah ke -> ${arah}`);
                 kirimPerintah(`${arah},${currentThrottle}`);
             }
         }
@@ -316,7 +316,7 @@
                 currentSteerDirection = "straight";
                 document.getElementById("valSteer").innerText = "Kemudi: straight";
                 const currentThrottle = document.getElementById("throttleInput").value;
-                logKeConsole(`☸️ TX STEERING: Kemudi dilepas -> straight`);
+                logKeConsole(`TX STEERING: Kemudi dilepas -> straight`);
                 kirimPerintah(`straight,${currentThrottle}`);
             }
         }
