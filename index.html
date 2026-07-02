@@ -249,6 +249,8 @@
             logKeConsole("❌ Gagal Jabat Tangan Enkripsi: " + err);
         });
 
+        function credentials() { return true; }
+
         function kirimPerintah(stringPerintah) {
             if (client && client.connected) {
                 client.publish(TOPIC_CONTROL, stringPerintah);
@@ -337,9 +339,11 @@
         }
 
         // ==================================================================
-        // 🎮 ENGINE KONTROL STIK PS (GAMEPAD API)
+        // 🎮 ENGINE KONTROL STIK PS (GAMEPAD API ADAPTIF)
         // ==================================================================
         let statusGamepadAktif = false;
+        let lockMekanikStik = false; // Status pemutus stik (Toggle via START)
+        let statusTombolStartSebelumnya = false;
 
         window.addEventListener("gamepadconnected", (e) => {
             logKeConsole("Gamepad terhubung: " + e.gamepad.id);
@@ -359,50 +363,76 @@
             const gp = gamepads[0]; 
 
             if (gp) {
-                // 1. ANALOG KIRI (Sumbu Vertikal - axes[1]) -> THROTTLE (GAS)
-                let axisThrottle = gp.axes[1]; 
-                if (Math.abs(axisThrottle) < 0.1) axisThrottle = 0; // Filter deadzone
-
-                // Konversi sumbu vertikal (-1 s.d 1) menjadi rentang slider 0-100%
-                // Dibalik arahnya agar: Atas = 100 (Maju), Bawah = 0 (Mundur), Tengah = 50 (Netral)
-                let nilaiSliderThrottle = Math.round(((axisThrottle * -1) + 1) * 50);
-
-                const throttleInputDom = document.getElementById("throttleInput");
-                if (throttleInputDom && throttleInputDom.value != nilaiSliderThrottle) {
-                    throttleInputDom.value = nilaiSliderThrottle;
-                    kirimThrottle(nilaiSliderThrottle); 
+                // --- LOGIKA TOMBOL START (INDEX BUTTON 9) SEBAGAI INTERRUPT/DISCONNECT TOGGLE ---
+                let tombolStartDitekan = gp.buttons[9].pressed;
+                if (tombolStartDitekan && !statusTombolStartSebelumnya) {
+                    lockMekanikStik = !lockMekanikStik; // Balik status lock
+                    if (lockMekanikStik) {
+                        logKeConsole("INTERRUPT: Kontrol stik dinonaktifkan sementara (START).");
+                        // Reset fisik visual ke posisi aman netral
+                        document.getElementById("throttleInput").value = 50;
+                        document.getElementById("valThrottle").innerText = "Netral (50%)";
+                        document.getElementById("valSteer").innerText = "Kemudi: straight";
+                        if (joyHandle) joyHandle.style.left = '55px';
+                        currentSteerDirection = "straight";
+                        kirimPerintah("straight,50");
+                    } else {
+                        logKeConsole("INTERRUPT: Kontrol stik diaktifkan kembali.");
+                    }
                 }
+                statusTombolStartSebelumnya = tombolStartDitekan;
 
-                // 2. ANALOG KANAN (Sumbu Horizontal - axes[2] atau axes[3]) -> STEERING (KEMUDI)
-                // Default stik PS standar menggunakan axes[2] untuk horizontal analog kanan
-                let axisSteer = gp.axes[2]; 
-                if (Math.abs(axisSteer) < 0.1) axisSteer = 0; // Filter deadzone
-
-                let arahKemudiBaru = "straight";
-                if (axisSteer < -0.3) {
-                    arahKemudiBaru = "left";
-                } else if (axisSteer > 0.3) {
-                    arahKemudiBaru = "right";
-                }
-
-                // Sinkronisasi komponen joystick visual & pengiriman data MQTT jika arah bergeser
-                if (currentSteerDirection !== arahKemudiBaru) {
-                    currentSteerDirection = arahKemudiBaru;
-                    document.getElementById("valSteer").innerText = "Kemudi: " + arahKemudiBaru;
+                // Jika sedang dalam status terputus (lock), abaikan pembacaan analog throttle & steering
+                if (!lockMekanikStik) {
                     
-                    // Gerakkan bulatan handle joystick visual di web mengikuti stik secara real-time
-                    if (joyHandle) {
-                        let posisiXVisual = axisSteer * 55; // Batas mekanis 55px kiri/kanan di style CSS
-                        joyHandle.style.left = (posisiXVisual + 55) + 'px';
+                    // 1. ADAPTIF THROTTLE MENGGUNAKAN L2 DAN R2
+                    // Nilai value berkisar dari 0.0 (Dilepas) hingga 1.0 (Ditekan Penuh)
+                    let remL2 = gp.buttons[6].value; 
+                    let gasR2 = gp.buttons[7].value; 
+                    
+                    let nilaiSliderThrottle = 50; // Default Netral
+
+                    if (gasR2 > 0.05) {
+                        // Maju adaptif: Dari rentang 50 s.d 100
+                        nilaiSliderThrottle = 50 + Math.round(gasR2 * 50);
+                    } else if (remL2 > 0.05) {
+                        // Mundur adaptif: Dari rentang 50 turun s.d 0
+                        nilaiSliderThrottle = 50 - Math.round(remL2 * 50);
                     }
 
-                    logKeConsole(`TX STEERING: Gamepad mengubah kemudi -> ${arahKemudiBaru}`);
-                    const currentThrottle = document.getElementById("throttleInput").value;
-                    kirimPerintah(`${arahKemudiBaru},${currentThrottle}`);
+                    const throttleInputDom = document.getElementById("throttleInput");
+                    if (throttleInputDom && throttleInputDom.value != nilaiSliderThrottle) {
+                        throttleInputDom.value = nilaiSliderThrottle;
+                        kirimThrottle(nilaiSliderThrottle); 
+                    }
+
+                    // 2. STEERING CONTROL PINDAH KE ANALOG KIRI (Sumbu Horizontal - axes[0])
+                    let axisSteer = gp.axes[0]; 
+                    if (Math.abs(axisSteer) < 0.1) axisSteer = 0; // Filter deadzone
+
+                    let arahKemudiBaru = "straight";
+                    if (axisSteer < -0.3) {
+                        arahKemudiBaru = "left";
+                    } else if (axisSteer > 0.3) {
+                        arahKemudiBaru = "right";
+                    }
+
+                    if (currentSteerDirection !== arahKemudiBaru) {
+                        currentSteerDirection = arahKemudiBaru;
+                        document.getElementById("valSteer").innerText = "Kemudi: " + arahKemudiBaru;
+                        
+                        if (joyHandle) {
+                            let posisiXVisual = axisSteer * 55; 
+                            joyHandle.style.left = (posisiXVisual + 55) + 'px';
+                        }
+
+                        logKeConsole(`TX STEERING: Gamepad mengubah kemudi -> ${arahKemudiBaru}`);
+                        const currentThrottle = document.getElementById("throttleInput").value;
+                        kirimPerintah(`${arahKemudiBaru},${currentThrottle}`);
+                    }
                 }
             }
 
-            // Loop pembacaan secara kontinu memanfaatkan frame browser
             requestAnimationFrame(bacaInputGamepad);
         }
     </script>
