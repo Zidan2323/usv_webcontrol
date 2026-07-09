@@ -192,8 +192,8 @@
         let koordinatJejak = [];
         let garisLintasan = L.polyline(koordinatJejak, {color: '#ff7b00', weight: 4, opacity: 0.8}).addTo(map);
 
-        // --- DATA JARINGAN NETWORK MQTT (REVISI JALUR AMAN PROFIL KONEKSI) ---
-        const BROKER_URL = "ws://broker.emqx.io:8083/mqtt"; 
+        // --- DATA JARINGAN NETWORK MQTT ---
+        const BROKER_URL = "wss://broker.emqx.io:8084/mqtt"; 
         const TOPIC_CONTROL = "usv/control/navigation";
         const TOPIC_TELEMETRY = "usv/telemetry/sensors";
         const LINK_VIDEO_STATIS = "https://postbox-papyrus-left.ngrok-free.dev/video_feed";
@@ -201,13 +201,12 @@
         let currentSteerDirection = "straight";
         let isDragging = false;
 
-        logKeConsole("Menghubungkan ke Broker EMQX Jaringan Publik via Jalur Port 8083...");
+        logKeConsole("Menghubungkan ke Broker Aman EMQX via SSL/TLS Port 8084...");
 
         const client = mqtt.connect(BROKER_URL, {
             clientId: "usv_gcs_client_" + Math.random().toString(16).substr(2, 8),
             clean: true,
-            connectTimeout: 4000,
-            keepalive: 60
+            connectTimeout: 4000
         });
 
         client.on('connect', () => {
@@ -266,7 +265,7 @@
         });
 
         client.on('error', (err) => {
-            logKeConsole("❌ Gagal Jabat Tangan Jaringan: " + err);
+            logKeConsole("❌ Gagal Jabat Tangan Enkripsi: " + err);
         });
 
         function kirimPerintah(stringPerintah) {
@@ -358,11 +357,13 @@
 
         // ==================================================================
         // ⏱️ ENGINE STOPWATCH (UJI DELAY LIVE STREAM)
+        // Menggunakan requestAnimationFrame (bukan setInterval cepat) agar
+        // tidak membebani event loop / mengganggu proses pesan MQTT.
         // ==================================================================
         let swRunning = false;
         let swStartTime = 0;
         let swElapsed = 0;
-        let swInterval = null;
+        let swRafId = null;
         const swDisplay = document.getElementById("stopwatchDisplay");
 
         function swFormat(ms) {
@@ -375,30 +376,31 @@
             return `${pad(min)}:${pad(sec)}.${pad(cs)}`;
         }
 
-        function swTick() {
-            const now = performance.now();
-            swElapsed = now - swStartTime;
+        function swLoop() {
+            if (!swRunning) return;
+            swElapsed = performance.now() - swStartTime;
             swDisplay.innerText = swFormat(swElapsed);
+            swRafId = requestAnimationFrame(swLoop);
         }
 
         function stopwatchStart() {
             if (swRunning) return;
             swRunning = true;
             swStartTime = performance.now() - swElapsed;
-            swInterval = setInterval(swTick, 10);
+            swRafId = requestAnimationFrame(swLoop);
             logKeConsole("⏱️ Stopwatch dimulai (uji delay live stream).");
         }
 
         function stopwatchStop() {
             if (!swRunning) return;
             swRunning = false;
-            clearInterval(swInterval);
+            if (swRafId) cancelAnimationFrame(swRafId);
             logKeConsole(`⏱️ Stopwatch berhenti pada ${swFormat(swElapsed)}.`);
         }
 
         function stopwatchReset() {
             swRunning = false;
-            clearInterval(swInterval);
+            if (swRafId) cancelAnimationFrame(swRafId);
             swElapsed = 0;
             swDisplay.innerText = swFormat(0);
             logKeConsole("⏱️ Stopwatch direset.");
@@ -442,6 +444,7 @@
                 }
 
                 // 2. ANALOG KANAN (Sumbu Horizontal - axes[2] atau axes[3]) -> STEERING (KEMUDI)
+                // Default stik PS standar menggunakan axes[2] untuk horizontal analog kanan
                 let axisSteer = gp.axes[2]; 
                 if (Math.abs(axisSteer) < 0.1) axisSteer = 0; // Filter deadzone
 
