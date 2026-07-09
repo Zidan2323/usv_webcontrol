@@ -55,6 +55,15 @@
         .log-panel { margin-top: 15px; background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 10px; height: 90px; overflow-y: auto; font-family: monospace; font-size: 11px; color: #00ff66; }
         
         #map { width: 100%; height: 320px; border: 1px solid #3f4752; border-radius: 8px; background-color: #1a1c1e; }
+
+        /* --- Stopwatch untuk uji delay live stream --- */
+        .stopwatch-box { margin-top: 12px; background-color: #1a1c1e; border: 1px solid #3f4752; border-radius: 8px; padding: 12px; text-align: center; }
+        .stopwatch-display { font-family: 'Consolas', monospace; font-size: 30px; font-weight: bold; color: #00ff66; letter-spacing: 1px; margin-bottom: 10px; }
+        .stopwatch-btns { display: flex; gap: 8px; }
+        .stopwatch-btns button { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer; text-transform: uppercase; }
+        .btn-sw-start { background-color: #006a4e; color: #ffffff; }
+        .btn-sw-stop { background-color: #ba1a1a; color: #ffffff; }
+        .btn-sw-reset { background-color: #334455; color: #ffffff; }
     </style>
 </head>
 <body>
@@ -80,6 +89,16 @@
                 <iframe id="camFrame" src="https://postbox-papyrus-left.ngrok-free.dev/video_feed"></iframe>
             </div>
             <button class="btn-reconnect" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO STREAM</button>
+
+            <div class="stopwatch-box">
+                <div class="widget-label" style="margin-bottom:8px;">STOPWATCH UJI DELAY STREAM</div>
+                <div class="stopwatch-display" id="stopwatchDisplay">00:00.00</div>
+                <div class="stopwatch-btns">
+                    <button class="btn-sw-start" id="btnSwStart" onclick="stopwatchStart()">▶ Mulai</button>
+                    <button class="btn-sw-stop" onclick="stopwatchStop()">⏸ Stop</button>
+                    <button class="btn-sw-reset" onclick="stopwatchReset()">⟲ Reset</button>
+                </div>
+            </div>
         </div>
 
         <div class="panel">
@@ -334,6 +353,57 @@
         function forceReconnectVideo() {
             document.getElementById('camFrame').src = LINK_VIDEO_STATIS + "?t=" + Date.now();
             logKeConsole("🔄 Menyegarkan jalur video feed...");
+        }
+
+        // ==================================================================
+        // ⏱️ ENGINE STOPWATCH (UJI DELAY LIVE STREAM)
+        // Menggunakan requestAnimationFrame (bukan setInterval cepat) agar
+        // tidak membebani event loop / mengganggu proses pesan MQTT.
+        // ==================================================================
+        let swRunning = false;
+        let swStartTime = 0;
+        let swElapsed = 0;
+        let swRafId = null;
+        const swDisplay = document.getElementById("stopwatchDisplay");
+
+        function swFormat(ms) {
+            const totalCs = Math.floor(ms / 10); // centiseconds
+            const cs = totalCs % 100;
+            const totalSec = Math.floor(totalCs / 100);
+            const sec = totalSec % 60;
+            const min = Math.floor(totalSec / 60);
+            const pad = (n, len = 2) => String(n).padStart(len, '0');
+            return `${pad(min)}:${pad(sec)}.${pad(cs)}`;
+        }
+
+        function swLoop() {
+            if (!swRunning) return;
+            swElapsed = performance.now() - swStartTime;
+            swDisplay.innerText = swFormat(swElapsed);
+            swRafId = requestAnimationFrame(swLoop);
+        }
+
+        function stopwatchStart() {
+            if (swRunning) return;
+            swRunning = true;
+            swStartTime = performance.now() - swElapsed;
+            swRafId = requestAnimationFrame(swLoop);
+            logKeConsole("⏱️ Stopwatch dimulai (uji delay live stream).");
+        }
+
+        function stopwatchStop() {
+            if (!swRunning) return;
+            swRunning = false;
+            if (swRafId) cancelAnimationFrame(swRafId);
+            logKeConsole(`⏱️ Stopwatch berhenti pada ${swFormat(swElapsed)}.`);
+        }
+
+        function stopwatchReset() {
+            swRunning = false;
+            if (swRafId) cancelAnimationFrame(swRafId);
+            swElapsed = 0;
+            swDisplay.innerText = swFormat(0);
+            logKeConsole("⏱️ Stopwatch direset.");
         }
 
         // ==================================================================
