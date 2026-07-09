@@ -192,8 +192,8 @@
         let koordinatJejak = [];
         let garisLintasan = L.polyline(koordinatJejak, {color: '#ff7b00', weight: 4, opacity: 0.8}).addTo(map);
 
-        // --- DATA JARINGAN NETWORK MQTT ---
-        const BROKER_URL = "wss://broker.emqx.io:8084/mqtt"; 
+        // --- DATA JARINGAN NETWORK MQTT (REVISI JALUR AMAN PROFIL KONEKSI) ---
+        const BROKER_URL = "ws://broker.emqx.io:8083/mqtt"; 
         const TOPIC_CONTROL = "usv/control/navigation";
         const TOPIC_TELEMETRY = "usv/telemetry/sensors";
         const LINK_VIDEO_STATIS = "https://postbox-papyrus-left.ngrok-free.dev/video_feed";
@@ -201,12 +201,13 @@
         let currentSteerDirection = "straight";
         let isDragging = false;
 
-        logKeConsole("Menghubungkan ke Broker Aman EMQX via SSL/TLS Port 8084...");
+        logKeConsole("Menghubungkan ke Broker EMQX Jaringan Publik via Jalur Port 8083...");
 
         const client = mqtt.connect(BROKER_URL, {
             clientId: "usv_gcs_client_" + Math.random().toString(16).substr(2, 8),
             clean: true,
-            connectTimeout: 4000
+            connectTimeout: 4000,
+            keepalive: 60
         });
 
         client.on('connect', () => {
@@ -265,7 +266,7 @@
         });
 
         client.on('error', (err) => {
-            logKeConsole("❌ Gagal Jabat Tangan Enkripsi: " + err);
+            logKeConsole("❌ Gagal Jabat Tangan Jaringan: " + err);
         });
 
         function kirimPerintah(stringPerintah) {
@@ -441,7 +442,6 @@
                 }
 
                 // 2. ANALOG KANAN (Sumbu Horizontal - axes[2] atau axes[3]) -> STEERING (KEMUDI)
-                // Default stik PS standar menggunakan axes[2] untuk horizontal analog kanan
                 let axisSteer = gp.axes[2]; 
                 if (Math.abs(axisSteer) < 0.1) axisSteer = 0; // Filter deadzone
 
