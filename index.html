@@ -204,6 +204,7 @@
         const TOPIC_CONTROL = "usv/control/navigation";
         const TOPIC_TELEMETRY = "usv/telemetry/sensors";
         const TOPIC_LATENCY = "usv/latency/command";
+        const TOPIC_PING_REPORT = "usv/ping/latency";
         const LINK_VIDEO_STATIS = "https://postbox-papyrus-left.ngrok-free.dev/video_feed";
 
         let currentSteerDirection = "straight";
@@ -263,9 +264,18 @@
                     }
                 }
             } else if (topic === TOPIC_LATENCY) {
-                const ms = parseFloat(payload.toString());
-                if (!isNaN(ms)) {
-                    document.getElementById("txtLatency").innerText = ms.toFixed(1);
+                // Pi meng-echo balik timestamp yang sama persis (bukan nilai ms terhitung).
+                // Round-trip dihitung DI SINI pakai satu jam saja (jam browser), supaya
+                // tidak bias akibat jam Pi & browser tidak sinkron.
+                const timestampEcho = parseFloat(payload.toString());
+                if (!isNaN(timestampEcho)) {
+                    const roundTripMs = Date.now() - timestampEcho;
+                    const latencyMs = roundTripMs / 2; // asumsi jalur kirim & terima simetris
+                    document.getElementById("txtLatency").innerText = latencyMs.toFixed(1);
+                    // Lapor balik nilai yang sudah dihitung ke Pi, supaya tetap tercatat di CSV logger
+                    if (client && client.connected) {
+                        client.publish(TOPIC_PING_REPORT, latencyMs.toFixed(1));
+                    }
                 }
             }
         });
