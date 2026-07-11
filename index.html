@@ -46,6 +46,15 @@
         .throttle-box { display: flex; flex-direction: column; align-items: center; gap: 10px; }
         .throttle-slider { -webkit-appearance: none; appearance: none; width: 60px; height: 150px; background: #24262a; border-radius: 30px; border: 2px solid #3f4752; outline: none; writing-mode: bt-lr; -webkit-writing-mode: vertical-lr; direction: rtl; }
         .throttle-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 54px; height: 30px; border-radius: 15px; background: #ff7b00; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+
+        /* Tombol preset cepat di sebelah slider throttle (untuk mempermudah pengujian) */
+        .throttle-with-presets { display: flex; align-items: center; gap: 10px; }
+        .throttle-presets { display: flex; flex-direction: column; gap: 5px; }
+        .btn-preset { padding: 5px 9px; font-size: 10px; font-weight: bold; border: 1px solid #3f4752; border-radius: 6px; cursor: pointer; color: #ffffff; background-color: #334455; white-space: nowrap; }
+        .btn-preset:hover { background-color: #445566; }
+        .btn-preset.preset-maju { background-color: #12563d; }
+        .btn-preset.preset-mundur { background-color: #6e1e1e; }
+        .btn-preset.preset-netral { background-color: #4a5568; }
         
         .joystick-zone { width: 160px; height: 160px; background: radial-gradient(circle, #24262a 40%, #1a1c1e 100%); border: 2px dashed #ff7b00; border-radius: 50%; position: relative; display: flex; justify-content: center; align-items: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.8); user-select: none; touch-action: none; }
         .joystick-handle { width: 50px; height: 50px; background: radial-gradient(circle, #ff9d00 0%, #d45d00 100%); border-radius: 50%; position: absolute; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.6); user-select: none; touch-action: none; }
@@ -86,7 +95,7 @@
         <div class="panel">
             <div class="panel-title">LIVE CAMERA MONITOR</div>
             <div class="video-wrapper">
-                <iframe id="camFrame" src="https://postbox-papyrus-left.ngrok-free.dev/video_feed"></iframe>
+                <iframe id="camFrame" src="https://gentleman-arousal-sufferer.ngrok-free.dev/video_feed"></iframe>
             </div>
             <button class="btn-reconnect" onclick="forceReconnectVideo()">🔄 RECONNECT VIDEO STREAM</button>
 
@@ -147,7 +156,18 @@
             <div class="control-container">
                 <div class="throttle-box">
                     <span style="font-size: 11px; font-weight: bold; color: #ff7b00;">THROTTLE</span>
-                    <input type="range" min="0" max="100" value="50" class="throttle-slider" id="throttleInput" oninput="kirimThrottle(this.value)">
+                    <div class="throttle-with-presets">
+                        <input type="range" min="0" max="100" value="50" class="throttle-slider" id="throttleInput" oninput="kirimThrottle(this.value)">
+                        <div class="throttle-presets">
+                            <button type="button" class="btn-preset preset-maju" onclick="setThrottlePreset(100)">Maju 100%</button>
+                            <button type="button" class="btn-preset preset-maju" onclick="setThrottlePreset(75)">Maju 50%</button>
+                            <button type="button" class="btn-preset preset-maju" onclick="setThrottlePreset(62)">Maju 25%</button>
+                            <button type="button" class="btn-preset preset-netral" onclick="setThrottlePreset(50)">Netral</button>
+                            <button type="button" class="btn-preset preset-mundur" onclick="setThrottlePreset(38)">Mundur 25%</button>
+                            <button type="button" class="btn-preset preset-mundur" onclick="setThrottlePreset(25)">Mundur 50%</button>
+                            <button type="button" class="btn-preset preset-mundur" onclick="setThrottlePreset(0)">Mundur 100%</button>
+                        </div>
+                    </div>
                     <span id="valThrottle" style="font-size: 12px; font-weight: bold; color: #00ff66;">Netral (50%)</span>
                 </div>
 
@@ -205,7 +225,7 @@
         const TOPIC_TELEMETRY = "usv/telemetry/sensors";
         const TOPIC_LATENCY = "usv/latency/command";
         const TOPIC_PING_REPORT = "usv/ping/latency";
-        const LINK_VIDEO_STATIS = "https://postbox-papyrus-left.ngrok-free.dev/video_feed";
+        const LINK_VIDEO_STATIS = "https://gentleman-arousal-sufferer.ngrok-free.dev/video_feed";
 
         let currentSteerDirection = "straight";
         let isDragging = false;
@@ -304,6 +324,15 @@
         function kirimResetCompass() {
             logKeConsole("TX COMPASS: Mengirim perintah kalibrasi utara...");
             kirimPerintah("reset_compass,50"); 
+        }
+
+        function setThrottlePreset(val) {
+            // Dipanggil oleh tombol preset (25%/50%/100% maju & mundur) agar slider
+            // langsung diatur ke nilai tersebut, sama seperti digeser manual.
+            const throttleInputDom = document.getElementById("throttleInput");
+            throttleInputDom.value = val;
+            smoothedThrottleValue = val; // sinkronkan agar gamepad tidak menimpa balik nilai preset
+            kirimThrottle(val);
         }
 
         function kirimThrottle(val) {
@@ -438,6 +467,12 @@
         // ==================================================================
         let statusGamepadAktif = false;
 
+        // Nilai throttle yang sudah dihaluskan (smoothing), dimulai dari posisi netral.
+        // Semakin kecil throttleSmoothingFactor, semakin halus/lambat perubahannya
+        // sehingga geseran kecil di stik tidak langsung membuat gas melonjak.
+        let smoothedThrottleValue = 50;
+        const throttleSmoothingFactor = 0.12;
+
         window.addEventListener("gamepadconnected", (e) => {
             logKeConsole("Gamepad terhubung: " + e.gamepad.id);
             statusGamepadAktif = true;
@@ -462,7 +497,13 @@
 
                 // Konversi sumbu vertikal (-1 s.d 1) menjadi rentang slider 0-100%
                 // Dibalik arahnya agar: Atas = 100 (Maju), Bawah = 0 (Mundur), Tengah = 50 (Netral)
-                let nilaiSliderThrottle = Math.round(((axisThrottle * -1) + 1) * 50);
+                let targetSliderThrottle = Math.round(((axisThrottle * -1) + 1) * 50);
+
+                // Smoothing: nilai target didekati sedikit demi sedikit tiap frame,
+                // bukan langsung dipakai mentah-mentah, supaya geseran kecil pada stik
+                // tidak membuat gas langsung melonjak besar.
+                smoothedThrottleValue += (targetSliderThrottle - smoothedThrottleValue) * throttleSmoothingFactor;
+                let nilaiSliderThrottle = Math.round(smoothedThrottleValue);
 
                 const throttleInputDom = document.getElementById("throttleInput");
                 if (throttleInputDom && throttleInputDom.value != nilaiSliderThrottle) {
